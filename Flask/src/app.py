@@ -770,6 +770,38 @@ def reject_registration(registration_id):
         }), 500
 
 # =====================================================
+# PROFILES ROUTES
+# =====================================================
+
+@app.route('/api/profiles', methods=['GET'])
+def get_profiles():
+    """Get all profiles (residents, providers, etc.)"""
+    try:
+        role = request.args.get('role')
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        query = "SELECT * FROM profiles WHERE 1=1"
+        params = []
+        
+        if role:
+            query += " AND role = %s"
+            params.append(role)
+        
+        cursor.execute(query, params)
+        profiles = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({'profiles': profiles, 'mensaje': 'Perfiles encontrados', 'exito': True}), 200
+        
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al listar perfiles: ' + str(e), 'exito': False}), 500
+
+# =====================================================
 # ERROR HANDLERS
 # =====================================================
 
