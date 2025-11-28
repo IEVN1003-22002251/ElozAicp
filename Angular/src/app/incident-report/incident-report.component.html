@@ -1,0 +1,78 @@
+<div class="incident-report-container">
+  <header class="report-header">
+    <button class="btn-back" (click)="goBack()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Regresar
+    </button>
+    <h1 class="report-title">Reporte de Incidentes</h1>
+  </header>
+
+  <!-- Mensajes de error -->
+  <div class="error-message" *ngIf="error">
+    <p>{{ error }}</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <p>Cargando datos de incidentes...</p>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="report-content" *ngIf="!loading && !error">
+    <!-- Resumen -->
+    <div class="summary-section">
+      <div class="summary-card">
+        <h3 class="summary-label">Total de Incidentes</h3>
+        <p class="summary-value">{{ totalIncidents }}</p>
+      </div>
+      <div class="summary-card">
+        <h3 class="summary-label">Tipos de Incidentes</h3>
+        <p class="summary-value">{{ incidentsByType.length }}</p>
+      </div>
+    </div>
+
+    <!-- Gráfica -->
+    <div class="chart-section" *ngIf="incidentsByType.length > 0">
+      <div class="chart-container">
+        <canvas #chartCanvas></canvas>
+      </div>
+    </div>
+    
+    <!-- Mensaje si no hay datos para la gráfica -->
+    <div class="chart-section" *ngIf="incidentsByType.length === 0">
+      <div class="empty-chart">
+        <p>No hay datos de incidentes para mostrar en la gráfica</p>
+      </div>
+    </div>
+
+    <!-- Lista de tipos de incidentes -->
+    <div class="types-list" *ngIf="incidentsByType.length > 0">
+      <h2 class="section-title">Detalle por Tipo</h2>
+      <div class="types-grid">
+        <div class="type-card" *ngFor="let item of incidentsByType">
+          <div class="type-header">
+            <h3 class="type-name">{{ formatIncidentType(item.incident_type) }}</h3>
+            <span class="type-count">{{ item.count }}</span>
+          </div>
+          <div class="type-bar">
+            <div 
+              class="type-bar-fill" 
+              [style.width.%]="totalIncidents > 0 ? (item.count / totalIncidents) * 100 : 0">
+            </div>
+          </div>
+          <p class="type-percentage">
+            {{ totalIncidents > 0 ? ((item.count / totalIncidents) * 100).toFixed(1) : 0 }}%
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado vacío -->
+    <div class="empty-state" *ngIf="incidentsByType.length === 0 && !loading">
+      <p>No hay datos de incidentes disponibles</p>
+    </div>
+  </div>
+</div>
+
