@@ -409,7 +409,7 @@ export class HistoryComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/dashboard']);
   }
 
   openDatePicker(): void {

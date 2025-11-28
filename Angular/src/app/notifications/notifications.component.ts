@@ -161,6 +161,6 @@ export class NotificationsComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/dashboard']);
   }
 }

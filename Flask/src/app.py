@@ -328,7 +328,7 @@ def delete_visitor(visitor_id):
 
 @app.route('/api/registrations', methods=['GET'])
 def get_pending_registrations():
-    """Obtiene todos los registros pendientes (status = 'pending')"""
+    """Obtiene todos los registros (pendientes, aprobados y rechazados)"""
     try:
         conn = get_connection()
         if not conn:
@@ -340,9 +340,11 @@ def get_pending_registrations():
         
         cursor = conn.cursor(dictionary=True)
         
-        # IMPORTANTE: Filtrar solo registros con status = 'pending'
+        # Obtener todos los registros, ordenados por status (pending primero) y luego por fecha
         cursor.execute(
-            "SELECT * FROM pending_registrations WHERE status = 'pending' ORDER BY created_at DESC"
+            "SELECT * FROM pending_registrations ORDER BY "
+            "CASE status WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'rejected' THEN 3 END, "
+            "created_at DESC"
         )
         registrations = cursor.fetchall()
         
@@ -767,6 +769,72 @@ def reject_registration(registration_id):
             'success': False,
             'exito': False,
             'mensaje': f'Error: {str(e)}'
+        }), 500
+
+# =====================================================
+# INCIDENTS ROUTES
+# =====================================================
+
+@app.route('/api/incidents/stats/by-type', methods=['GET'])
+def get_incidents_by_type():
+    """Get incidents grouped by type"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener parámetros opcionales
+        fraccionamiento_id = request.args.get('fraccionamiento_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # Construir query
+        query = """
+            SELECT incident_type, COUNT(*) as count 
+            FROM incidents 
+            WHERE 1=1
+        """
+        params = []
+        
+        if fraccionamiento_id:
+            query += " AND fraccionamiento_id = %s"
+            params.append(fraccionamiento_id)
+        
+        if start_date:
+            query += " AND reported_at >= %s"
+            params.append(start_date)
+        
+        if end_date:
+            query += " AND reported_at <= %s"
+            params.append(end_date)
+        
+        query += " GROUP BY incident_type ORDER BY count DESC"
+        
+        cursor.execute(query, params)
+        results = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': results
+        }), 200
+        
+    except Error as e:
+        return jsonify({
+            'success': False,
+            'mensaje': f'Error en la base de datos: {str(e)}'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'mensaje': f'Error al obtener estadísticas: {str(e)}'
         }), 500
 
 # =====================================================
