@@ -1,0 +1,98 @@
+<div class="profile-container">
+  <!-- Header -->
+  <header class="profile-header">
+    <button class="btn-back" (click)="goBack()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <h1 class="profile-title">Mi Perfil</h1>
+    <button class="btn-settings" (click)="openSettings()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Profile Picture Section -->
+  <div class="profile-picture-section">
+    <div class="profile-picture-wrapper">
+      <div class="profile-picture">
+        <div class="profile-avatar" *ngIf="!profileImage">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <img *ngIf="profileImage" [src]="profileImage" alt="Profile" />
+        <button class="btn-change-photo" (click)="changePhoto()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <h2 class="profile-name">{{ profile?.name || profile?.user_name || 'Usuario' }}</h2>
+    <div class="profile-details">
+      <p class="profile-location-role">
+        <span class="location">{{ profile?.fraccionamiento_name || 'Villas 123' }}</span>
+        <span class="separator">•</span>
+        <span class="role">resident</span>
+      </p>
+      <p class="profile-member-since">Miembro desde {{ memberSince }}</p>
+      <p class="profile-email">{{ profile?.email || 'jonny10@gmail.com' }}</p>
+      <p class="profile-phone">{{ profile?.phone || '4771234567' }}</p>
+    </div>
+  </div>
+
+  <!-- Service Status Card -->
+  <div class="service-status-card">
+    <div class="service-status-header">
+      <div class="shield-icon-wrapper">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shield-icon">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="check-icon">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3 class="service-status-title">Estado del Servicio</h3>
+    </div>
+    <div class="service-status-content">
+      <div class="status-row">
+        <span class="status-label">Estado:</span>
+        <span class="status-value">
+          <span class="status-dot"></span>
+          Activo
+        </span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Licencia expira:</span>
+        <span class="status-value">{{ licenseExpires }}</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Días restantes:</span>
+        <span class="status-value">{{ remainingDays }} días</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Button -->
+  <div class="logout-section">
+    <button class="btn-logout" (click)="logout()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+      <span>Cerrar sesión</span>
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <footer class="profile-footer">
+    <p class="app-version">AICP v1.0.0</p>
+  </footer>
+</div>

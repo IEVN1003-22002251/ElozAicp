@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AICP Mobile</string>
+    <string name="title_activity_main">AICP Mobile</string>
+    <string name="package_name">com.aicp.mobile</string>
+    <string name="custom_url_scheme">com.aicp.mobile</string>
+</resources>

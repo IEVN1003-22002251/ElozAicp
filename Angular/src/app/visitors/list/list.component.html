@@ -1,0 +1,34 @@
+<div class="container">
+  <div class="header-section">
+    <h1>Lista de Visitantes</h1>
+    <div class="header-buttons">
+      <button class="btn btn-back" (click)="goToDashboard()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Regresar al Dashboard
+      </button>
+      <button class="btn btn-primary" (click)="goToAdd()">Agregar Visitante</button>
+    </div>
+  </div>
+  
+  <div *ngIf="loading" class="loading">Cargando...</div>
+  
+  <div *ngIf="error" class="error">{{ error }}</div>
+  
+  <div *ngIf="visitors && visitors.length > 0" class="visitors-list">
+    <div *ngFor="let visitor of visitors" class="visitor-card">
+      <h3>{{ visitor.name }}</h3>
+      <p>Email: {{ visitor.email }}</p>
+      <p>Tipo: {{ visitor.type }}</p>
+      <p>Estado: {{ visitor.status }}</p>
+      <button class="btn btn-secondary" (click)="editVisitor(visitor.id)">Editar</button>
+    </div>
+  </div>
+  
+  <div *ngIf="visitors && visitors.length === 0" class="no-data">
+    No hay visitantes registrados
+  </div>
+</div>
+
+
