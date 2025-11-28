@@ -139,13 +139,41 @@ def get_profile():
             return jsonify({'error': 'Error de conexión a la base de datos', 'exito': False}), 500
         
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM profiles WHERE id = %s", (user_id,))
+        
+        # Query para obtener el perfil con información del fraccionamiento
+        # Intentamos hacer JOIN con tabla fraccionamientos si existe, si no, solo obtenemos el perfil
+        query = """
+            SELECT 
+                p.*,
+                f.name as fraccionamiento_name
+            FROM profiles p
+            LEFT JOIN fraccionamientos f ON p.fraccionamiento_id = f.id
+            WHERE p.id = %s
+        """
+        
+        try:
+            cursor.execute(query, (user_id,))
+        except Exception as e:
+            # Si falla el JOIN (tabla fraccionamientos no existe), usar query simple
+            cursor.execute("SELECT * FROM profiles WHERE id = %s", (user_id,))
+        
         profile = cursor.fetchone()
         cursor.close()
         conn.close()
         
         if not profile:
             return jsonify({'error': 'Perfil no encontrado', 'exito': False}), 404
+        
+        # Si no hay fraccionamiento_name del JOIN, intentar obtenerlo de otra forma
+        if not profile.get('fraccionamiento_name') and profile.get('fraccionamiento_id'):
+            # Mapeo básico de IDs a nombres (puedes ajustar según tu base de datos)
+            fraccionamiento_map = {
+                1: 'La Querencia',
+                2: 'Las Palmas',
+                3: 'Puerta Luna',
+                4: 'Villas del Sol'
+            }
+            profile['fraccionamiento_name'] = fraccionamiento_map.get(profile.get('fraccionamiento_id'))
         
         return jsonify({'exito': True, 'profile': profile}), 200
         
@@ -175,7 +203,11 @@ def get_visitors():
         
         if user_id:
             query += " AND created_by = %s"
-            params.append(user_id)
+            # Convertir user_id a entero para comparar con created_by (INT)
+            try:
+                params.append(int(user_id))
+            except (ValueError, TypeError):
+                params.append(user_id)
         if status:
             query += " AND status = %s"
             params.append(status)
@@ -459,9 +491,6 @@ def create_registration():
                 'mensaje': f'El estado debe ser uno de: {", ".join(valid_statuses)}'
             }), 400
         
-        # Hashear la contraseña
-        hashed_password = generate_password_hash(password)
-        
         # Generar UUID para el id
         registration_id = str(uuid.uuid4())
         
@@ -495,7 +524,7 @@ def create_registration():
             full_name,
             registration_data.get('user_name'),
             email,
-            hashed_password,
+            password,
             registration_data.get('phone'),
             role,
             registration_data.get('fraccionamiento_id'),
@@ -592,21 +621,16 @@ def approve_registration(registration_id):
         profile_id = str(uuid.uuid4())
         
         # 4. Preparar datos para profiles
-        # Si el password ya está hasheado, usarlo; si no, hashearlo
         password = registration['password']
         
-        # Verificar si el password está hasheado (los hashes de werkzeug empiezan con pbkdf2: o $2b$)
-        if not password.startswith('pbkdf2:') and not password.startswith('$2b$') and not password.startswith('$2a$') and not password.startswith('scrypt:'):
-            # Si no está hasheado, hashearlo
-            password = generate_password_hash(password)
-        
         # 5. Insertar en profiles
+        # Intentar incluir house_number si existe en la tabla
         insert_profile_query = """
             INSERT INTO profiles (
                 id, name, user_name, email, password, role, 
-                fraccionamiento_id, created_at, updated_at
+                fraccionamiento_id, house_number, created_at, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             )
         """
         
@@ -615,12 +639,37 @@ def approve_registration(registration_id):
             registration['full_name'],  # name en profiles = full_name en pending
             registration.get('user_name'),
             registration['email'],
-            password,  # Password hasheado
+            password,  # Password en texto plano
             registration.get('role', 'resident'),
-            registration.get('fraccionamiento_id')
+            registration.get('fraccionamiento_id'),
+            registration.get('house_number')  # Incluir número de casa si está disponible
         )
         
-        cursor.execute(insert_profile_query, profile_values)
+        try:
+            cursor.execute(insert_profile_query, profile_values)
+        except Exception as e:
+            # Si falla porque house_number no existe en la tabla, intentar sin ese campo
+            if 'house_number' in str(e).lower():
+                insert_profile_query = """
+                    INSERT INTO profiles (
+                        id, name, user_name, email, password, role, 
+                        fraccionamiento_id, created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                """
+                profile_values = (
+                    profile_id,
+                    registration['full_name'],
+                    registration.get('user_name'),
+                    registration['email'],
+                    password,
+                    registration.get('role', 'resident'),
+                    registration.get('fraccionamiento_id')
+                )
+                cursor.execute(insert_profile_query, profile_values)
+            else:
+                raise
         
         # 6. Actualizar status en pending_registrations
         cursor.execute(

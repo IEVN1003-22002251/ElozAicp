@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { VisitorService } from '../../services/visitor.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-add',
@@ -50,8 +51,21 @@ export class AddComponent implements OnInit {
   constructor(
     private visitorService: VisitorService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private authService: AuthService
   ) {}
+
+  private isResident(): boolean {
+    const profile = this.authService.getCachedProfile();
+    if (!profile) return false;
+    const role = profile.role?.toLowerCase();
+    return role === 'resident' || role === 'residente';
+  }
+
+  private getRedirectRoute(): string {
+    // Si es residente, regresar a pre-register, si no, a la lista de visitantes
+    return this.isResident() ? '/pre-register' : '/visitors/list';
+  }
 
   ngOnInit(): void {
     // Verificar si hay un query parameter para seleccionar automáticamente el tipo
@@ -104,6 +118,11 @@ export class AddComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
+    // Obtener el ID del usuario actual
+    const currentUser = this.authService.getCurrentUser();
+    const profile = this.authService.getCachedProfile();
+    const userId = currentUser?.id || profile?.id;
+
     // Preparar datos del proveedor
     const providerVisitor = {
       name: this.providerData.company,
@@ -111,13 +130,14 @@ export class AddComponent implements OnInit {
       phone: '',
       type: 'provider',
       status: 'active',
-      serviceDate: this.providerData.serviceDate
+      serviceDate: this.providerData.serviceDate,
+      created_by: userId ? parseInt(userId.toString()) : null
     };
 
     this.visitorService.createVisitor(providerVisitor).subscribe({
       next: (response) => {
         if (response.exito) {
-          this.router.navigate(['/visitors/list']);
+          this.router.navigate([this.getRedirectRoute()]);
         } else {
           this.error = response.mensaje || 'Error al registrar proveedor';
           this.loading = false;
@@ -141,19 +161,25 @@ export class AddComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
+    // Obtener el ID del usuario actual
+    const currentUser = this.authService.getCurrentUser();
+    const profile = this.authService.getCachedProfile();
+    const userId = currentUser?.id || profile?.id;
+
     const frequentVisitor = {
       name: this.visitor.name,
       email: this.visitor.email || '',
       phone: this.visitor.phone || '',
       type: 'visitor',
       status: 'active',
-      entryDate: this.visitor.entryDate || null
+      entryDate: this.visitor.entryDate || null,
+      created_by: userId ? parseInt(userId.toString()) : null
     };
 
     this.visitorService.createVisitor(frequentVisitor).subscribe({
       next: (response) => {
         if (response.exito) {
-          this.router.navigate(['/visitors/list']);
+          this.router.navigate([this.getRedirectRoute()]);
         } else {
           this.error = response.mensaje || 'Error al registrar visitante frecuente';
           this.loading = false;
@@ -194,19 +220,25 @@ export class AddComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
+    // Obtener el ID del usuario actual
+    const currentUser = this.authService.getCurrentUser();
+    const profile = this.authService.getCachedProfile();
+    const userId = currentUser?.id || profile?.id;
+
     const oneTimeVisitor = {
       name: this.oneTimeData.name,
       email: '',
       phone: '',
       type: 'one-time',
       status: 'active',
-      entryDate: this.oneTimeData.entryDate || null
+      entryDate: this.oneTimeData.entryDate || null,
+      created_by: userId ? parseInt(userId.toString()) : null
     };
 
     this.visitorService.createVisitor(oneTimeVisitor).subscribe({
       next: (response) => {
         if (response.exito) {
-          this.router.navigate(['/visitors/list']);
+          this.router.navigate([this.getRedirectRoute()]);
         } else {
           this.error = response.mensaje || 'Error al registrar visitante';
           this.loading = false;
@@ -234,6 +266,11 @@ export class AddComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
+    // Obtener el ID del usuario actual
+    const currentUser = this.authService.getCurrentUser();
+    const profile = this.authService.getCachedProfile();
+    const userId = currentUser?.id || profile?.id;
+
     // Preparar datos del evento
     const eventVisitor = {
       name: this.eventData.name,
@@ -243,13 +280,14 @@ export class AddComponent implements OnInit {
       status: 'active',
       eventDate: this.eventData.eventDate || null,
       eventTime: this.eventData.eventTime || null,
-      numberOfGuests: this.eventData.numberOfGuests || null
+      numberOfGuests: this.eventData.numberOfGuests || null,
+      created_by: userId ? parseInt(userId.toString()) : null
     };
 
     this.visitorService.createVisitor(eventVisitor).subscribe({
       next: (response) => {
         if (response.exito) {
-          this.router.navigate(['/visitors/list']);
+          this.router.navigate([this.getRedirectRoute()]);
         } else {
           this.error = response.mensaje || 'Error al registrar evento';
           this.loading = false;

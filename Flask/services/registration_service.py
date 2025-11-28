@@ -62,7 +62,7 @@ class RegistrationService:
                 'name': registration.get('full_name'),
                 'user_name': registration.get('user_name'),
                 'email': registration.get('email'),
-                'password': registration.get('password'),  # In production, hash this
+                'password': registration.get('password'),  # Password en texto plano
                 'role': registration.get('role', 'resident'),
                 'fraccionamiento_id': registration.get('fraccionamiento_id'),
                 'created_at': datetime.utcnow().isoformat()

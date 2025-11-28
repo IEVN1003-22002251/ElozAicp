@@ -88,7 +88,7 @@ import { AuthService } from '../../../services/auth.service';
         </form>
 
         <!-- Link Olvidaste tu contraseña -->
-        <a class="forgot-password" (click)="router.navigate(['/forgot-password'])">
+        <a class="forgot-password" (click)="goToForgotPassword()">
           ¿Olvidaste tu contraseña?
         </a>
 
@@ -106,11 +106,14 @@ import { AuthService } from '../../../services/auth.service';
   styles: [`
     .login-container {
       min-height: 100vh;
+      height: 100vh;
       background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6e 100%);
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       padding: 20px;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .login-content {
@@ -119,11 +122,15 @@ import { AuthService } from '../../../services/auth.service';
       display: flex;
       flex-direction: column;
       align-items: center;
+      margin: auto;
+      padding: 20px 0;
     }
 
     .logo-container {
       display: flex;
       justify-content: center;
+      align-items: center;
+      width: 100%;
       margin-bottom: 40px;
     }
 
@@ -132,6 +139,8 @@ import { AuthService } from '../../../services/auth.service';
       height: auto;
       object-fit: contain;
       filter: brightness(0) invert(1);
+      display: block;
+      margin: 0 auto;
     }
 
     .welcome-section {
@@ -146,6 +155,7 @@ import { AuthService } from '../../../services/auth.service';
       color: #ffffff;
       margin-bottom: 8px;
       line-height: 1.2;
+      text-align: center;
     }
 
     .welcome-subtitle {
@@ -153,6 +163,7 @@ import { AuthService } from '../../../services/auth.service';
       font-weight: 400;
       color: #ffffff;
       opacity: 0.9;
+      text-align: center;
     }
 
     .login-form {
@@ -215,6 +226,7 @@ import { AuthService } from '../../../services/auth.service';
       margin-bottom: 20px;
       text-align: center;
       font-size: 14px;
+      width: 100%;
     }
 
     .btn-login {
@@ -242,17 +254,23 @@ import { AuthService } from '../../../services/auth.service';
 
     .forgot-password {
       color: #ffffff;
-      text-decoration: none;
+      text-decoration: underline;
       font-size: 14px;
       cursor: pointer;
       margin-bottom: 24px;
       text-align: center;
       display: block;
-      transition: opacity 0.3s ease;
+      transition: all 0.3s ease;
+      user-select: none;
     }
 
     .forgot-password:hover {
       opacity: 0.8;
+      text-decoration: none;
+    }
+
+    .forgot-password:active {
+      opacity: 0.6;
     }
 
     .btn-new-resident {
@@ -305,6 +323,10 @@ export class SignInComponent {
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
+  }
+
+  goToForgotPassword(): void {
+    this.router.navigate(['/forgot-password']);
   }
 
   onSubmit(): void {

@@ -127,6 +127,11 @@ export const routes: Routes = [
       import('./notifications/notifications.routes').then((m) => m.default),
   },
   {
+    path: 'chat',
+    loadChildren: () =>
+      import('./chat/chat.routes').then((m) => m.default),
+  },
+  {
     path: '**',
     redirectTo: '/auth/sing-in'
   }

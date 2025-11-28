@@ -84,5 +84,9 @@ export class AuthService {
   isAuthenticated(): boolean {
     return this.currentUserSubject.value !== null;
   }
+
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
 }
 

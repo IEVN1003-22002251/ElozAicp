@@ -1,0 +1,23 @@
+{
+  "terminal.integrated.allowWorkspaceConfiguration": true,
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.autoReplies": {
+    "Terminal will be reused by tasks, press any key to close it.": "\r"
+  },
+  "python.debugging.autoReload": {
+    "enable": true
+  },
+  "debug.allowBreakpointsEverywhere": true,
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    }
+  },
+  "workbench.terminal.enablePersistentSessions": true,
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000
+}
+
