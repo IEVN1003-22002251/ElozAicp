@@ -328,7 +328,7 @@ def delete_visitor(visitor_id):
 
 @app.route('/api/registrations', methods=['GET'])
 def get_pending_registrations():
-    """Obtiene todos los registros (pendientes, aprobados y rechazados)"""
+    """Obtiene todos los registros pendientes (status = 'pending')"""
     try:
         conn = get_connection()
         if not conn:
@@ -340,11 +340,9 @@ def get_pending_registrations():
         
         cursor = conn.cursor(dictionary=True)
         
-        # Obtener todos los registros, ordenados por status (pending primero) y luego por fecha
+        # IMPORTANTE: Filtrar solo registros con status = 'pending'
         cursor.execute(
-            "SELECT * FROM pending_registrations ORDER BY "
-            "CASE status WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'rejected' THEN 3 END, "
-            "created_at DESC"
+            "SELECT * FROM pending_registrations WHERE status = 'pending' ORDER BY created_at DESC"
         )
         registrations = cursor.fetchall()
         
@@ -590,10 +588,7 @@ def approve_registration(registration_id):
                 'mensaje': 'Ya existe un usuario con este email'
             }), 400
         
-        # 3. Generar ID para el nuevo usuario (UUID)
-        profile_id = str(uuid.uuid4())
-        
-        # 4. Preparar datos para profiles
+        # 3. Preparar datos para profiles
         # Si el password ya está hasheado, usarlo; si no, hashearlo
         password = registration['password']
         
@@ -602,27 +597,41 @@ def approve_registration(registration_id):
             # Si no está hasheado, hashearlo
             password = generate_password_hash(password)
         
-        # 5. Insertar en profiles
+        # 4. Convertir fraccionamiento_id de VARCHAR a INT si es necesario
+        fraccionamiento_id = registration.get('fraccionamiento_id')
+        if fraccionamiento_id:
+            try:
+                # Intentar convertir a int si es un string numérico
+                if isinstance(fraccionamiento_id, str) and fraccionamiento_id.isdigit():
+                    fraccionamiento_id = int(fraccionamiento_id)
+                elif not isinstance(fraccionamiento_id, int):
+                    fraccionamiento_id = None
+            except (ValueError, TypeError):
+                fraccionamiento_id = None
+        
+        # 5. Insertar en profiles (sin especificar id, se genera automáticamente con AUTO_INCREMENT)
         insert_profile_query = """
             INSERT INTO profiles (
-                id, name, user_name, email, password, role, 
+                name, user_name, email, password, role, 
                 fraccionamiento_id, created_at, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             )
         """
         
         profile_values = (
-            profile_id,
             registration['full_name'],  # name en profiles = full_name en pending
             registration.get('user_name'),
             registration['email'],
             password,  # Password hasheado
             registration.get('role', 'resident'),
-            registration.get('fraccionamiento_id')
+            fraccionamiento_id
         )
         
         cursor.execute(insert_profile_query, profile_values)
+        
+        # Obtener el ID generado automáticamente
+        profile_id = cursor.lastrowid
         
         # 6. Actualizar status en pending_registrations
         cursor.execute(
@@ -772,70 +781,36 @@ def reject_registration(registration_id):
         }), 500
 
 # =====================================================
-# INCIDENTS ROUTES
+# PROFILES ROUTES
 # =====================================================
 
-@app.route('/api/incidents/stats/by-type', methods=['GET'])
-def get_incidents_by_type():
-    """Get incidents grouped by type"""
+@app.route('/api/profiles', methods=['GET'])
+def get_profiles():
+    """Get all profiles (residents, providers, etc.)"""
     try:
+        role = request.args.get('role')
+        
         conn = get_connection()
         if not conn:
-            return jsonify({
-                'success': False,
-                'mensaje': 'Error de conexión a la base de datos'
-            }), 500
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
         
         cursor = conn.cursor(dictionary=True)
-        
-        # Obtener parámetros opcionales
-        fraccionamiento_id = request.args.get('fraccionamiento_id')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        # Construir query
-        query = """
-            SELECT incident_type, COUNT(*) as count 
-            FROM incidents 
-            WHERE 1=1
-        """
+        query = "SELECT * FROM profiles WHERE 1=1"
         params = []
         
-        if fraccionamiento_id:
-            query += " AND fraccionamiento_id = %s"
-            params.append(fraccionamiento_id)
-        
-        if start_date:
-            query += " AND reported_at >= %s"
-            params.append(start_date)
-        
-        if end_date:
-            query += " AND reported_at <= %s"
-            params.append(end_date)
-        
-        query += " GROUP BY incident_type ORDER BY count DESC"
+        if role:
+            query += " AND role = %s"
+            params.append(role)
         
         cursor.execute(query, params)
-        results = cursor.fetchall()
-        
+        profiles = cursor.fetchall()
         cursor.close()
         conn.close()
         
-        return jsonify({
-            'success': True,
-            'data': results
-        }), 200
+        return jsonify({'profiles': profiles, 'mensaje': 'Perfiles encontrados', 'exito': True}), 200
         
-    except Error as e:
-        return jsonify({
-            'success': False,
-            'mensaje': f'Error en la base de datos: {str(e)}'
-        }), 500
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'mensaje': f'Error al obtener estadísticas: {str(e)}'
-        }), 500
+        return jsonify({'mensaje': 'Error al listar perfiles: ' + str(e), 'exito': False}), 500
 
 # =====================================================
 # ERROR HANDLERS
