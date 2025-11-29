@@ -588,10 +588,7 @@ def approve_registration(registration_id):
                 'mensaje': 'Ya existe un usuario con este email'
             }), 400
         
-        # 3. Generar ID para el nuevo usuario (UUID)
-        profile_id = str(uuid.uuid4())
-        
-        # 4. Preparar datos para profiles
+        # 3. Preparar datos para profiles
         # Si el password ya está hasheado, usarlo; si no, hashearlo
         password = registration['password']
         
@@ -600,27 +597,41 @@ def approve_registration(registration_id):
             # Si no está hasheado, hashearlo
             password = generate_password_hash(password)
         
-        # 5. Insertar en profiles
+        # 4. Convertir fraccionamiento_id de VARCHAR a INT si es necesario
+        fraccionamiento_id = registration.get('fraccionamiento_id')
+        if fraccionamiento_id:
+            try:
+                # Intentar convertir a int si es un string numérico
+                if isinstance(fraccionamiento_id, str) and fraccionamiento_id.isdigit():
+                    fraccionamiento_id = int(fraccionamiento_id)
+                elif not isinstance(fraccionamiento_id, int):
+                    fraccionamiento_id = None
+            except (ValueError, TypeError):
+                fraccionamiento_id = None
+        
+        # 5. Insertar en profiles (sin especificar id, se genera automáticamente con AUTO_INCREMENT)
         insert_profile_query = """
             INSERT INTO profiles (
-                id, name, user_name, email, password, role, 
+                name, user_name, email, password, role, 
                 fraccionamiento_id, created_at, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             )
         """
         
         profile_values = (
-            profile_id,
             registration['full_name'],  # name en profiles = full_name en pending
             registration.get('user_name'),
             registration['email'],
             password,  # Password hasheado
             registration.get('role', 'resident'),
-            registration.get('fraccionamiento_id')
+            fraccionamiento_id
         )
         
         cursor.execute(insert_profile_query, profile_values)
+        
+        # Obtener el ID generado automáticamente
+        profile_id = cursor.lastrowid
         
         # 6. Actualizar status en pending_registrations
         cursor.execute(
