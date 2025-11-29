@@ -207,17 +207,58 @@ export class QrAccessComponent implements OnInit {
       return;
     }
 
-    // Generar el QR code usando una API externa o datos del usuario
-    this.generateQRCode();
+    // Cargar perfil actualizado si es necesario
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.id) {
+      this.authService.getProfile(currentUser.id).subscribe({
+        next: (response) => {
+          if (response.exito && response.profile) {
+            this.profile = response.profile;
+            localStorage.setItem('profile', JSON.stringify(response.profile));
+          }
+          // Generar el QR code único para este residente
+          this.generateQRCode();
+        },
+        error: (error) => {
+          console.error('Error al cargar perfil:', error);
+          // Generar QR con datos disponibles
+          this.generateQRCode();
+        }
+      });
+    } else {
+      this.generateQRCode();
+    }
   }
 
   generateQRCode(): void {
-    // Generar datos para el QR (puede ser el ID del usuario, email, etc.)
-    const qrData = this.profile?.id || this.profile?.user_name || 'default';
+    // Obtener el ID único del usuario (es el identificador único en la BD)
+    const userId = this.profile?.id || this.authService.getCurrentUser()?.id;
     
-    // Usar una API externa para generar el QR code
-    // Alternativa: usar una librería como angularx-qrcode
-    this.qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
+    if (!userId) {
+      console.error('No se pudo obtener el ID del usuario para generar el QR');
+      this.qrCodeUrl = '';
+      return;
+    }
+
+    // Crear un objeto con información única del residente
+    const qrDataObject = {
+      type: 'resident',
+      user_id: userId,
+      name: this.profile?.user_name || this.profile?.name || '',
+      fraccionamiento_id: this.profile?.fraccionamiento_id || '',
+      house_number: this.profile?.house_number || '',
+      timestamp: new Date().toISOString()
+    };
+
+    // Convertir a JSON string para el QR
+    const qrDataString = JSON.stringify(qrDataObject);
+    
+    console.log('Generando QR único para residente ID:', userId);
+    console.log('Datos del QR:', qrDataObject);
+
+    // Generar el QR code usando una API externa
+    // El QR contiene un JSON con información única del residente
+    this.qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrDataString)}`;
   }
 
   goBack(): void {

@@ -2,11 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ResidentPreferenceService } from '../services/resident-preference.service';
+import { BannerCarouselComponent } from '../components/banner-carousel/banner-carousel.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BannerCarouselComponent],
   template: `
     <div class="home-container">
       <!-- Header Section -->
@@ -107,25 +109,8 @@ import { AuthService } from '../services/auth.service';
           </div>
         </div>
 
-        <!-- Promotional Banner -->
-        <div class="promo-banner" (click)="contactBusiness()">
-          <div class="banner-content">
-            <div class="banner-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </div>
-            <div class="banner-text">
-              <div class="banner-header">
-                <h4>¿Tienes una empresa?</h4>
-                <span class="ad-tag">PUBLICIDAD</span>
-              </div>
-              <p class="banner-description">¿Quieres poner acceso privado o conoces alguna empresa que lo necesite? ¡Contáctanos!</p>
-              <span class="banner-cta">Toca para contactar →</span>
-            </div>
-          </div>
-        </div>
+        <!-- Banner Carousel -->
+        <app-banner-carousel></app-banner-carousel>
       </div>
 
       <!-- Bottom Navigation -->
@@ -237,7 +222,7 @@ import { AuthService } from '../services/auth.service';
       flex: 0 0 auto;
       width: 60px;
       max-width: 50%;
-      background-color: #dc3545;
+      background-color: #dc3545 !important;
       border: none;
       border-radius: 12px;
       padding: 16px;
@@ -256,18 +241,25 @@ import { AuthService } from '../services/auth.service';
     }
 
     .btn-visitors:hover {
-      background-color: #c82333;
       width: 50%;
       flex: 1;
       transform: scaleX(1);
     }
 
+    .btn-visitors:not(.active) {
+      background-color: #dc3545 !important;
+    }
+
+    .btn-visitors:not(.active):hover {
+      background-color: #c82333 !important;
+    }
+
     .btn-visitors.active {
-      background-color: #20b2aa;
+      background-color: #20b2aa !important;
     }
 
     .btn-visitors.active:hover {
-      background-color: #1a9d96;
+      background-color: #1a9d96 !important;
     }
 
     .btn-visitors span {
@@ -288,7 +280,7 @@ import { AuthService } from '../services/auth.service';
       flex: 0 0 auto;
       width: 60px;
       max-width: 50%;
-      background-color: #20b2aa;
+      background-color: #dc3545 !important;
       border: none;
       border-radius: 12px;
       padding: 16px;
@@ -307,39 +299,25 @@ import { AuthService } from '../services/auth.service';
     }
 
     .btn-personnel:hover {
-      background-color: #1a9d96;
       width: 50%;
       flex: 1;
       transform: scaleX(1);
     }
 
-    .btn-personnel.active {
-      background-color: #20b2aa;
-    }
-
-    .btn-personnel.active:hover {
-      background-color: #1a9d96;
-    }
-
     .btn-personnel:not(.active) {
-      background-color: #dc3545;
+      background-color: #dc3545 !important;
     }
 
     .btn-personnel:not(.active):hover {
-      background-color: #c82333;
+      background-color: #c82333 !important;
     }
 
-    .btn-personnel span {
-      opacity: 0;
-      width: 0;
-      overflow: hidden;
-      transition: opacity 0.3s ease 0.1s, width 0.3s ease 0.1s;
-      pointer-events: none;
+    .btn-personnel.active {
+      background-color: #20b2aa !important;
     }
 
-    .btn-personnel:hover span {
-      opacity: 1;
-      width: auto;
+    .btn-personnel.active:hover {
+      background-color: #1a9d96 !important;
     }
 
     .btn-personnel span {
@@ -555,9 +533,18 @@ export class HomeComponent implements OnInit {
   isPersonnelActive: boolean = true;
   isVisitorsActive: boolean = false;
 
+  // Método para debug - verificar estado actual
+  getButtonStates() {
+    return {
+      visitors: this.isVisitorsActive,
+      personnel: this.isPersonnelActive
+    };
+  }
+
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private preferenceService: ResidentPreferenceService
   ) {}
 
   ngOnInit(): void {
@@ -583,23 +570,113 @@ export class HomeComponent implements OnInit {
           console.error('Error al cargar el perfil:', error);
         }
       });
+
+      // Cargar las preferencias del residente desde la BD
+      this.loadPreferences(currentUser.id);
     }
   }
 
+  /**
+   * Carga las preferencias del residente desde la base de datos
+   */
+  loadPreferences(userId: string): void {
+    console.log('Cargando preferencias para usuario:', userId);
+    this.preferenceService.getPreferences(userId).subscribe({
+      next: (response) => {
+        console.log('Respuesta al cargar preferencias:', response);
+        if (response.exito || response.success) {
+          const preferences = response.data || response.preferences || response;
+          if (preferences) {
+            this.isVisitorsActive = preferences.accepts_visitors === true || preferences.accepts_visitors === 1;
+            this.isPersonnelActive = preferences.accepts_personnel === true || preferences.accepts_personnel === 1;
+            console.log('Preferencias cargadas:', {
+              visits: this.isVisitorsActive,
+              personnel: this.isPersonnelActive
+            });
+          }
+        } else {
+          console.log('No se encontraron preferencias, usando valores por defecto');
+        }
+      },
+      error: (error) => {
+        console.warn('⚠️ Error al cargar preferencias (usando valores por defecto):', error);
+        // Si no existen preferencias o hay error, usar valores por defecto
+        // Los valores por defecto ya están establecidos en las propiedades
+        console.log('Valores por defecto:', {
+          visits: this.isVisitorsActive,
+          personnel: this.isPersonnelActive
+        });
+      }
+    });
+  }
+
   togglePersonnel(): void {
+    console.log('Toggle PERSONAL - Estado anterior:', this.isPersonnelActive);
     this.isPersonnelActive = !this.isPersonnelActive;
+    console.log('Toggle PERSONAL - Estado nuevo:', this.isPersonnelActive);
+    this.savePreferenceToDatabase('personnel', this.isPersonnelActive);
   }
 
   toggleVisitors(): void {
+    console.log('Toggle VISITAS - Estado anterior:', this.isVisitorsActive);
     this.isVisitorsActive = !this.isVisitorsActive;
+    console.log('Toggle VISITAS - Estado nuevo:', this.isVisitorsActive);
+    this.savePreferenceToDatabase('visitors', this.isVisitorsActive);
+  }
+
+  /**
+   * Guarda la preferencia del residente en la base de datos
+   */
+  private savePreferenceToDatabase(type: 'visitors' | 'personnel', value: boolean): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      console.error('No se puede guardar la preferencia: usuario no autenticado');
+      return;
+    }
+
+    const userId = currentUser.id;
+    console.log(`Guardando preferencia ${type} para usuario ${userId}:`, value);
+    
+    if (type === 'visitors') {
+      this.preferenceService.updateVisitorPreference(userId, value).subscribe({
+        next: (response) => {
+          console.log('Respuesta del servidor (visitas):', response);
+          if (response.exito || response.success) {
+            console.log('✅ Preferencia de visitas actualizada correctamente:', value);
+          } else {
+            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
+            // No revertir, mantener el cambio visual aunque el backend no responda correctamente
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error al guardar preferencia de visitas:', error);
+          console.error('Detalles del error:', error.error || error.message);
+          // NO revertir el cambio - mantener el estado visual aunque falle el backend
+          // Esto permite que funcione en modo offline o si el backend no está disponible
+        }
+      });
+    } else if (type === 'personnel') {
+      this.preferenceService.updatePersonnelPreference(userId, value).subscribe({
+        next: (response) => {
+          console.log('Respuesta del servidor (personal):', response);
+          if (response.exito || response.success) {
+            console.log('✅ Preferencia de personal actualizada correctamente:', value);
+          } else {
+            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
+            // No revertir, mantener el cambio visual
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error al guardar preferencia de personal:', error);
+          console.error('Detalles del error:', error.error || error.message);
+          // NO revertir el cambio - mantener el estado visual aunque falle el backend
+        }
+      });
+    }
   }
 
   navigateTo(route: string): void {
     this.router.navigate([`/${route}`]);
   }
 
-  contactBusiness(): void {
-    // Implementar lógica de contacto
-    console.log('Contactar empresa');
-  }
 }
