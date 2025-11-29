@@ -222,6 +222,7 @@ import { RegistrationService } from '../services/registration.service';
                 [(ngModel)]="formData.fraccionamiento_id"
                 name="fraccionamiento_id"
                 required
+                [class.has-selection]="formData.fraccionamiento_id"
               >
                 <option value="" disabled selected>Selecciona un fraccionamiento...</option>
                 <option *ngFor="let fraccionamiento of fraccionamientos" [value]="fraccionamiento.id">
@@ -447,6 +448,33 @@ import { RegistrationService } from '../services/registration.service';
     select.form-input {
       appearance: none;
       cursor: pointer;
+    }
+
+    select.form-input:focus,
+    select.form-input.has-selection {
+      color: #000000 !important;
+      background-color: #ffffff !important;
+    }
+
+    select.form-input option {
+      color: #000000 !important;
+      background-color: #ffffff !important;
+    }
+
+    select.form-input option:disabled {
+      color: rgba(0, 0, 0, 0.4) !important;
+      background-color: #ffffff !important;
+    }
+
+    select.form-input option:checked,
+    select.form-input option:hover {
+      color: #000000 !important;
+      background-color: #ffffff !important;
+    }
+
+    select.form-input option:not(:disabled) {
+      color: #000000 !important;
+      background-color: #ffffff !important;
     }
 
     .chevron-icon {

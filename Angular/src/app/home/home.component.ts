@@ -2,11 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ResidentPreferenceService } from '../services/resident-preference.service';
+import { BannerCarouselComponent } from '../components/banner-carousel/banner-carousel.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BannerCarouselComponent],
   template: `
     <div class="home-container">
       <!-- Header Section -->
@@ -17,6 +19,7 @@ import { AuthService } from '../services/auth.service';
             <div class="location-info">
               <span class="location-label">Fraccionamiento</span>
               <span class="location-value">{{ profile?.fraccionamiento_name || 'Villas 123' }}</span>
+              <span class="house-number" *ngIf="profile?.house_number">Casa {{ profile?.house_number }}</span>
             </div>
           </div>
           <div class="logo-header">
@@ -26,19 +29,19 @@ import { AuthService } from '../services/auth.service';
 
         <!-- Action Buttons -->
         <div class="action-buttons">
-          <button class="btn-visitors">
+          <button class="btn-visitors" [class.active]="isVisitorsActive" (click)="toggleVisitors()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
+            <span>{{ isVisitorsActive ? 'VISITAS ACTIVADO' : 'VISITAS DESACTIVADO' }}</span>
           </button>
-          <button class="btn-personnel">
-            <span>PERSONAL ACTIVADO</span>
+          <button class="btn-personnel" [class.active]="isPersonnelActive" (click)="togglePersonnel()">
+            <span>{{ isPersonnelActive ? 'PERSONAL ACTIVADO' : 'PERSONAL DESACTIVADO' }}</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
             </svg>
           </button>
         </div>
@@ -46,6 +49,7 @@ import { AuthService } from '../services/auth.service';
 
       <!-- Main Content -->
       <div class="main-content">
+
         <!-- Functional Cards Grid -->
         <div class="cards-grid">
           <!-- Pre-registro Card -->
@@ -64,7 +68,7 @@ import { AuthService } from '../services/auth.service';
 
           <!-- QR Code Card -->
           <div class="function-card" (click)="navigateTo('qr-access')">
-            <div class="card-icon blue">
+            <div class="card-icon green">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="5" height="5"></rect>
                 <rect x="16" y="3" width="5" height="5"></rect>
@@ -105,25 +109,8 @@ import { AuthService } from '../services/auth.service';
           </div>
         </div>
 
-        <!-- Promotional Banner -->
-        <div class="promo-banner" (click)="contactBusiness()">
-          <div class="banner-content">
-            <div class="banner-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </div>
-            <div class="banner-text">
-              <div class="banner-header">
-                <h4>¿Tienes una empresa?</h4>
-                <span class="ad-tag">PUBLICIDAD</span>
-              </div>
-              <p class="banner-description">¿Quieres poner acceso privado o conoces alguna empresa que lo necesite? ¡Contáctanos!</p>
-              <span class="banner-cta">Toca para contactar →</span>
-            </div>
-          </div>
-        </div>
+        <!-- Banner Carousel -->
+        <app-banner-carousel></app-banner-carousel>
       </div>
 
       <!-- Bottom Navigation -->
@@ -150,8 +137,8 @@ import { AuthService } from '../services/auth.service';
         </div>
         <div class="nav-item" (click)="navigateTo('profile')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
           </svg>
           <span>Perfil</span>
         </div>
@@ -161,7 +148,7 @@ import { AuthService } from '../services/auth.service';
   styles: [`
     .home-container {
       min-height: 100vh;
-      background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+      background-color: #1a1a2e;
       padding-bottom: 80px;
     }
 
@@ -206,6 +193,13 @@ import { AuthService } from '../services/auth.service';
       color: #ffffff;
     }
 
+    .house-number {
+      font-size: 14px;
+      font-weight: 500;
+      color: #ffffff;
+      margin-left: 8px;
+    }
+
     .logo-header {
       flex-shrink: 0;
     }
@@ -219,29 +213,16 @@ import { AuthService } from '../services/auth.service';
     .action-buttons {
       display: flex;
       gap: 12px;
+      position: relative;
+      width: 100%;
+      justify-content: space-between;
     }
 
     .btn-visitors {
-      flex: 1;
-      background-color: #dc3545;
-      border: none;
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ffffff;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    .btn-visitors:hover {
-      background-color: #c82333;
-    }
-
-    .btn-personnel {
-      flex: 1;
-      background-color: #20c997;
+      flex: 0 0 auto;
+      width: 60px;
+      max-width: 50%;
+      background-color: #dc3545 !important;
       border: none;
       border-radius: 12px;
       padding: 16px;
@@ -253,11 +234,104 @@ import { AuthService } from '../services/auth.service';
       font-weight: 600;
       font-size: 14px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: right center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .btn-visitors:hover {
+      width: 50%;
+      flex: 1;
+      transform: scaleX(1);
+    }
+
+    .btn-visitors:not(.active) {
+      background-color: #dc3545 !important;
+    }
+
+    .btn-visitors:not(.active):hover {
+      background-color: #c82333 !important;
+    }
+
+    .btn-visitors.active {
+      background-color: #20b2aa !important;
+    }
+
+    .btn-visitors.active:hover {
+      background-color: #1a9d96 !important;
+    }
+
+    .btn-visitors span {
+      white-space: nowrap;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.3s ease 0.1s, width 0.3s ease 0.1s;
+      pointer-events: none;
+    }
+
+    .btn-visitors:hover span {
+      opacity: 1;
+      width: auto;
+    }
+
+    .btn-personnel {
+      flex: 0 0 auto;
+      width: 60px;
+      max-width: 50%;
+      background-color: #dc3545 !important;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: left center;
+      overflow: hidden;
+      position: relative;
     }
 
     .btn-personnel:hover {
-      background-color: #1aa179;
+      width: 50%;
+      flex: 1;
+      transform: scaleX(1);
+    }
+
+    .btn-personnel:not(.active) {
+      background-color: #dc3545 !important;
+    }
+
+    .btn-personnel:not(.active):hover {
+      background-color: #c82333 !important;
+    }
+
+    .btn-personnel.active {
+      background-color: #20b2aa !important;
+    }
+
+    .btn-personnel.active:hover {
+      background-color: #1a9d96 !important;
+    }
+
+    .btn-personnel span {
+      white-space: nowrap;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.3s ease 0.1s, width 0.3s ease 0.1s;
+      pointer-events: none;
+    }
+
+    .btn-personnel:hover span {
+      opacity: 1;
+      width: auto;
     }
 
     /* Main Content */
@@ -273,7 +347,7 @@ import { AuthService } from '../services/auth.service';
     }
 
     .function-card {
-      background-color: rgba(255, 255, 255, 0.05);
+      background-color: #16213e;
       border-radius: 16px;
       padding: 20px;
       cursor: pointer;
@@ -286,7 +360,7 @@ import { AuthService } from '../services/auth.service';
 
     .function-card:hover {
       transform: translateY(-4px);
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: #1e2a42;
     }
 
     .card-icon {
@@ -300,8 +374,13 @@ import { AuthService } from '../services/auth.service';
     }
 
     .card-icon.blue {
-      background-color: rgba(0, 123, 255, 0.2);
-      color: #007bff;
+      background-color: rgba(100, 181, 246, 0.2);
+      color: #64b5f6;
+    }
+
+    .card-icon.green {
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
     }
 
     .card-icon.yellow {
@@ -323,7 +402,7 @@ import { AuthService } from '../services/auth.service';
 
     /* Promotional Banner */
     .promo-banner {
-      background-color: rgba(255, 255, 255, 0.05);
+      background-color: #2a2a2a;
       border-left: 4px solid #ff9800;
       border-radius: 12px;
       padding: 16px;
@@ -332,7 +411,7 @@ import { AuthService } from '../services/auth.service';
     }
 
     .promo-banner:hover {
-      background-color: rgba(255, 255, 255, 0.08);
+      background-color: #333333;
     }
 
     .banner-content {
@@ -451,10 +530,21 @@ import { AuthService } from '../services/auth.service';
 })
 export class HomeComponent implements OnInit {
   profile: any = null;
+  isPersonnelActive: boolean = true;
+  isVisitorsActive: boolean = false;
+
+  // Método para debug - verificar estado actual
+  getButtonStates() {
+    return {
+      visitors: this.isVisitorsActive,
+      personnel: this.isPersonnelActive
+    };
+  }
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private preferenceService: ResidentPreferenceService
   ) {}
 
   ngOnInit(): void {
@@ -462,6 +552,126 @@ export class HomeComponent implements OnInit {
     
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/auth/sing-in']);
+      return;
+    }
+
+    // Recargar el perfil desde el backend para obtener información actualizada
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.id) {
+      this.authService.getProfile(currentUser.id).subscribe({
+        next: (response) => {
+          if (response.exito && response.profile) {
+            this.profile = response.profile;
+            // Actualizar el cache con el perfil actualizado
+            localStorage.setItem('profile', JSON.stringify(response.profile));
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar el perfil:', error);
+        }
+      });
+
+      // Cargar las preferencias del residente desde la BD
+      this.loadPreferences(currentUser.id);
+    }
+  }
+
+  /**
+   * Carga las preferencias del residente desde la base de datos
+   */
+  loadPreferences(userId: string): void {
+    console.log('Cargando preferencias para usuario:', userId);
+    this.preferenceService.getPreferences(userId).subscribe({
+      next: (response) => {
+        console.log('Respuesta al cargar preferencias:', response);
+        if (response.exito || response.success) {
+          const preferences = response.data || response.preferences || response;
+          if (preferences) {
+            this.isVisitorsActive = preferences.accepts_visitors === true || preferences.accepts_visitors === 1;
+            this.isPersonnelActive = preferences.accepts_personnel === true || preferences.accepts_personnel === 1;
+            console.log('Preferencias cargadas:', {
+              visits: this.isVisitorsActive,
+              personnel: this.isPersonnelActive
+            });
+          }
+        } else {
+          console.log('No se encontraron preferencias, usando valores por defecto');
+        }
+      },
+      error: (error) => {
+        console.warn('⚠️ Error al cargar preferencias (usando valores por defecto):', error);
+        // Si no existen preferencias o hay error, usar valores por defecto
+        // Los valores por defecto ya están establecidos en las propiedades
+        console.log('Valores por defecto:', {
+          visits: this.isVisitorsActive,
+          personnel: this.isPersonnelActive
+        });
+      }
+    });
+  }
+
+  togglePersonnel(): void {
+    console.log('Toggle PERSONAL - Estado anterior:', this.isPersonnelActive);
+    this.isPersonnelActive = !this.isPersonnelActive;
+    console.log('Toggle PERSONAL - Estado nuevo:', this.isPersonnelActive);
+    this.savePreferenceToDatabase('personnel', this.isPersonnelActive);
+  }
+
+  toggleVisitors(): void {
+    console.log('Toggle VISITAS - Estado anterior:', this.isVisitorsActive);
+    this.isVisitorsActive = !this.isVisitorsActive;
+    console.log('Toggle VISITAS - Estado nuevo:', this.isVisitorsActive);
+    this.savePreferenceToDatabase('visitors', this.isVisitorsActive);
+  }
+
+  /**
+   * Guarda la preferencia del residente en la base de datos
+   */
+  private savePreferenceToDatabase(type: 'visitors' | 'personnel', value: boolean): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      console.error('No se puede guardar la preferencia: usuario no autenticado');
+      return;
+    }
+
+    const userId = currentUser.id;
+    console.log(`Guardando preferencia ${type} para usuario ${userId}:`, value);
+    
+    if (type === 'visitors') {
+      this.preferenceService.updateVisitorPreference(userId, value).subscribe({
+        next: (response) => {
+          console.log('Respuesta del servidor (visitas):', response);
+          if (response.exito || response.success) {
+            console.log('✅ Preferencia de visitas actualizada correctamente:', value);
+          } else {
+            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
+            // No revertir, mantener el cambio visual aunque el backend no responda correctamente
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error al guardar preferencia de visitas:', error);
+          console.error('Detalles del error:', error.error || error.message);
+          // NO revertir el cambio - mantener el estado visual aunque falle el backend
+          // Esto permite que funcione en modo offline o si el backend no está disponible
+        }
+      });
+    } else if (type === 'personnel') {
+      this.preferenceService.updatePersonnelPreference(userId, value).subscribe({
+        next: (response) => {
+          console.log('Respuesta del servidor (personal):', response);
+          if (response.exito || response.success) {
+            console.log('✅ Preferencia de personal actualizada correctamente:', value);
+          } else {
+            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
+            // No revertir, mantener el cambio visual
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error al guardar preferencia de personal:', error);
+          console.error('Detalles del error:', error.error || error.message);
+          // NO revertir el cambio - mantener el estado visual aunque falle el backend
+        }
+      });
     }
   }
 
@@ -469,8 +679,4 @@ export class HomeComponent implements OnInit {
     this.router.navigate([`/${route}`]);
   }
 
-  contactBusiness(): void {
-    // Implementar lógica de contacto
-    console.log('Contactar empresa');
-  }
 }

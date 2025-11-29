@@ -9,8 +9,8 @@ import { AuthService } from '../services/auth.service';
   selector: 'app-notifications',
   standalone: true,
   imports: [CommonModule],
-  template: `<div><h1>Notifications</h1></div>`,
-  styles: []
+  templateUrl: './notifications.component.html',
+  styleUrls: ['./notifications.component.css']
 })
 export class NotificationsComponent implements OnInit {
   notifications: any[] = [];
@@ -158,6 +158,38 @@ export class NotificationsComponent implements OnInit {
     if (hours < 24) return `Hace ${hours} h`;
     if (days < 7) return `Hace ${days} días`;
     return notificationDate.toLocaleDateString('es-ES');
+  }
+
+  deleteAllNotifications(): void {
+    if (!confirm('¿Estás seguro de eliminar todas las notificaciones?')) return;
+
+    this.loading = true;
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      this.loading = false;
+      return;
+    }
+
+    // Eliminar todas las notificaciones una por una
+    const deletePromises = this.filteredNotifications.map(notification =>
+      this.http.delete<any>(`${environment.apiUrl}/notifications/${notification.id}`).toPromise()
+    );
+
+    Promise.all(deletePromises)
+      .then(() => {
+        this.notifications = [];
+        this.filteredNotifications = [];
+        this.updateUnreadCount();
+        this.loading = false;
+      })
+      .catch((error) => {
+        console.error('Error deleting all notifications:', error);
+        this.loading = false;
+      });
+  }
+
+  navigateTo(route: string): void {
+    this.router.navigate([`/${route}`]);
   }
 
   goBack(): void {

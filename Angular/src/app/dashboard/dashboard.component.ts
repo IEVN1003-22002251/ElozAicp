@@ -60,8 +60,8 @@ import { AuthService } from '../services/auth.service';
           </div>
           
           <div class="action-card" (click)="navigateTo('admin-banner')">
-            <h3 class="card-title">Banner Admin</h3>
-            <p class="card-subtitle">Gestionar banners</p>
+            <h3 class="card-title">Recados y Avisos</h3>
+            <p class="card-subtitle">Gestionar recados para residentes</p>
           </div>
         </div>
       </main>

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 interface Message {
   id: number;
@@ -22,9 +23,17 @@ export class ChatComponent implements OnInit {
   messages: Message[] = [];
   newMessage: string = '';
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
+    // Verificar autenticación
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/sing-in']);
+      return;
+    }
     // Initialize empty messages array
     // Messages will be loaded from service when implemented
   }
@@ -72,5 +81,3 @@ export class ChatComponent implements OnInit {
     this.router.navigate(['/dashboard']);
   }
 }
-
-
