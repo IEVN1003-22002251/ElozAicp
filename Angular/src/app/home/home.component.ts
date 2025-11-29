@@ -111,6 +111,16 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
 
         <!-- Banner Carousel -->
         <app-banner-carousel></app-banner-carousel>
+
+        <!-- Botón de Alerta -->
+        <button class="btn-alert" (click)="handleAlert()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>ALERTA</span>
+        </button>
       </div>
 
       <!-- Bottom Navigation -->
@@ -466,6 +476,45 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
       font-weight: 600;
     }
 
+    /* Botón de Alerta */
+    .btn-alert {
+      width: 100%;
+      background-color: #dc3545;
+      border: none;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 16px;
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-alert:hover {
+      background-color: #c82333;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+    }
+
+    .btn-alert:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-alert svg {
+      flex-shrink: 0;
+    }
+
+    .btn-alert span {
+      letter-spacing: 1px;
+    }
+
     /* Bottom Navigation */
     .bottom-nav {
       position: fixed;
@@ -677,6 +726,13 @@ export class HomeComponent implements OnInit {
 
   navigateTo(route: string): void {
     this.router.navigate([`/${route}`]);
+  }
+
+  handleAlert(): void {
+    // Aquí puedes agregar la lógica para manejar la alerta
+    console.log('Botón de alerta presionado');
+    // Por ejemplo, navegar a una página de alertas o abrir un modal
+    // this.router.navigate(['/alert']);
   }
 
 }
