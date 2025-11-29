@@ -18,77 +18,194 @@
   </div>
 
   <!-- Loading -->
-  <div class="loading-state" *ngIf="loading && registrations.length === 0">
-    <p>Cargando registros pendientes...</p>
+  <div class="loading-state" *ngIf="loading && allRegistrations.length === 0">
+    <p>Cargando registros...</p>
   </div>
 
-  <!-- Lista de registros -->
-  <div class="registrations-content" *ngIf="!loading || registrations.length > 0">
-    <!-- Estado vacío -->
-    <div class="empty-state" *ngIf="registrations.length === 0 && !loading">
-      <p>No hay registros pendientes</p>
-    </div>
-
-    <!-- Cards de registros -->
-    <div class="registrations-list" *ngIf="registrations.length > 0">
-      <div class="registration-card" *ngFor="let registration of registrations">
-        <div class="card-header">
-          <div class="card-user-info">
-            <div class="user-avatar">
-              {{ (registration.full_name || 'U')[0].toUpperCase() }}
+  <!-- Contenido principal -->
+  <div class="registrations-content" *ngIf="!loading || allRegistrations.length > 0">
+    
+    <!-- SECCIÓN: REGISTROS PENDIENTES -->
+    <div class="registrations-section" *ngIf="pendingRegistrations.length > 0 || !loading">
+      <h2 class="section-title">Registros Pendientes</h2>
+      <div class="registrations-list" *ngIf="pendingRegistrations.length > 0">
+        <div class="registration-card pending-card" *ngFor="let registration of pendingRegistrations">
+          <div class="card-header">
+            <div class="card-user-info">
+              <div class="user-avatar">
+                {{ (registration.full_name || 'U')[0].toUpperCase() }}
+              </div>
+              <div class="user-details">
+                <h3 class="user-name">{{ registration.full_name || 'Sin nombre' }}</h3>
+                <p class="user-email">{{ registration.email || 'Sin email' }}</p>
+              </div>
             </div>
-            <div class="user-details">
-              <h3 class="user-name">{{ registration.full_name || 'Sin nombre' }}</h3>
-              <p class="user-email">{{ registration.email || 'Sin email' }}</p>
+            <span class="badge pending">Pendiente</span>
+          </div>
+
+          <div class="card-body">
+            <div class="info-row" *ngIf="registration.user_name">
+              <span class="info-label">Usuario:</span>
+              <span class="info-value">{{ registration.user_name }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.phone">
+              <span class="info-label">Teléfono:</span>
+              <span class="info-value">{{ registration.phone }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.role">
+              <span class="info-label">Rol:</span>
+              <span class="info-value">{{ registration.role }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.street || registration.house_number">
+              <span class="info-label">Dirección:</span>
+              <span class="info-value">
+                {{ registration.street }} {{ registration.house_number }}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Fecha de registro:</span>
+              <span class="info-value">{{ formatDate(registration.created_at) }}</span>
             </div>
           </div>
-          <span class="badge pending">Pendiente</span>
-        </div>
 
-        <div class="card-body">
-          <div class="info-row" *ngIf="registration.user_name">
-            <span class="info-label">Usuario:</span>
-            <span class="info-value">{{ registration.user_name }}</span>
-          </div>
-          <div class="info-row" *ngIf="registration.phone">
-            <span class="info-label">Teléfono:</span>
-            <span class="info-value">{{ registration.phone }}</span>
-          </div>
-          <div class="info-row" *ngIf="registration.role">
-            <span class="info-label">Rol:</span>
-            <span class="info-value">{{ registration.role }}</span>
-          </div>
-          <div class="info-row" *ngIf="registration.street || registration.house_number">
-            <span class="info-label">Dirección:</span>
-            <span class="info-value">
-              {{ registration.street }} {{ registration.house_number }}
-            </span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Fecha de registro:</span>
-            <span class="info-value">{{ formatDate(registration.created_at) }}</span>
-          </div>
-        </div>
+          <div class="card-actions">
+            <button class="btn-reject" type="button" (click)="rejectRegistration(registration)" [disabled]="loading">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              Rechazar Registro
+            </button>
 
-        <div class="card-actions">
-          <button class="btn-reject" type="button" (click)="rejectRegistration(registration)" [disabled]="loading">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            Rechazar Registro
-          </button>
-
-          <button class="btn-approve" type="button" (click)="approveRegistration(registration)" [disabled]="loading">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            Aceptar Registro
-          </button>
+            <button class="btn-approve" type="button" (click)="approveRegistration(registration)" [disabled]="loading">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              Aceptar Registro
+            </button>
+          </div>
         </div>
       </div>
+      <div class="empty-state" *ngIf="pendingRegistrations.length === 0 && !loading">
+        <p>No hay registros pendientes</p>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: REGISTROS APROBADOS -->
+    <div class="registrations-section" *ngIf="approvedRegistrations.length > 0 || !loading">
+      <h2 class="section-title">Registros Aprobados</h2>
+      <div class="registrations-list" *ngIf="approvedRegistrations.length > 0">
+        <div class="registration-card approved-card" *ngFor="let registration of approvedRegistrations">
+          <div class="card-header">
+            <div class="card-user-info">
+              <div class="user-avatar approved-avatar">
+                {{ (registration.full_name || 'U')[0].toUpperCase() }}
+              </div>
+              <div class="user-details">
+                <h3 class="user-name">{{ registration.full_name || 'Sin nombre' }}</h3>
+                <p class="user-email">{{ registration.email || 'Sin email' }}</p>
+              </div>
+            </div>
+            <span class="badge approved">Aprobado</span>
+          </div>
+
+          <div class="card-body">
+            <div class="info-row" *ngIf="registration.user_name">
+              <span class="info-label">Usuario:</span>
+              <span class="info-value">{{ registration.user_name }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.phone">
+              <span class="info-label">Teléfono:</span>
+              <span class="info-value">{{ registration.phone }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.role">
+              <span class="info-label">Rol:</span>
+              <span class="info-value">{{ registration.role }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.street || registration.house_number">
+              <span class="info-label">Dirección:</span>
+              <span class="info-value">
+                {{ registration.street }} {{ registration.house_number }}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Fecha de registro:</span>
+              <span class="info-value">{{ formatDate(registration.created_at) }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.updated_at">
+              <span class="info-label">Fecha de aprobación:</span>
+              <span class="info-value">{{ formatDate(registration.updated_at) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-state" *ngIf="approvedRegistrations.length === 0 && !loading">
+        <p>No hay registros aprobados</p>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: REGISTROS RECHAZADOS -->
+    <div class="registrations-section" *ngIf="rejectedRegistrations.length > 0 || !loading">
+      <h2 class="section-title">Registros Rechazados</h2>
+      <div class="registrations-list" *ngIf="rejectedRegistrations.length > 0">
+        <div class="registration-card rejected-card" *ngFor="let registration of rejectedRegistrations">
+          <div class="card-header">
+            <div class="card-user-info">
+              <div class="user-avatar rejected-avatar">
+                {{ (registration.full_name || 'U')[0].toUpperCase() }}
+              </div>
+              <div class="user-details">
+                <h3 class="user-name">{{ registration.full_name || 'Sin nombre' }}</h3>
+                <p class="user-email">{{ registration.email || 'Sin email' }}</p>
+              </div>
+            </div>
+            <span class="badge rejected">Rechazado</span>
+          </div>
+
+          <div class="card-body">
+            <div class="info-row" *ngIf="registration.user_name">
+              <span class="info-label">Usuario:</span>
+              <span class="info-value">{{ registration.user_name }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.phone">
+              <span class="info-label">Teléfono:</span>
+              <span class="info-value">{{ registration.phone }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.role">
+              <span class="info-label">Rol:</span>
+              <span class="info-value">{{ registration.role }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.street || registration.house_number">
+              <span class="info-label">Dirección:</span>
+              <span class="info-value">
+                {{ registration.street }} {{ registration.house_number }}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Fecha de registro:</span>
+              <span class="info-value">{{ formatDate(registration.created_at) }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.updated_at">
+              <span class="info-label">Fecha de rechazo:</span>
+              <span class="info-value">{{ formatDate(registration.updated_at) }}</span>
+            </div>
+            <div class="info-row" *ngIf="registration.rejection_reason">
+              <span class="info-label">Motivo de rechazo:</span>
+              <span class="info-value">{{ registration.rejection_reason }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-state" *ngIf="rejectedRegistrations.length === 0 && !loading">
+        <p>No hay registros rechazados</p>
+      </div>
+    </div>
+
+    <!-- Estado vacío general -->
+    <div class="empty-state" *ngIf="allRegistrations.length === 0 && !loading">
+      <p>No hay registros disponibles</p>
     </div>
   </div>
 </div>

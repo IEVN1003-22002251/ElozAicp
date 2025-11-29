@@ -11,7 +11,10 @@ import { RegistrationService } from '../services/registration.service';
   styleUrls: ['./pending-registrations.component.css']
 })
 export class PendingRegistrationsComponent implements OnInit {
-  registrations: any[] = [];
+  allRegistrations: any[] = [];
+  pendingRegistrations: any[] = [];
+  approvedRegistrations: any[] = [];
+  rejectedRegistrations: any[] = [];
   loading = false;
   error = '';
   success = '';
@@ -32,12 +35,10 @@ export class PendingRegistrationsComponent implements OnInit {
     this.registrationService.getPendingRegistrations().subscribe({
       next: (response) => {
         if (response.success) {
-          // Filtrar solo los registros con status 'pending'
-          this.registrations = (response.data || []).filter(
-            (reg: any) => reg.status === 'pending'
-          );
+          this.allRegistrations = response.data || [];
+          this.separateRegistrationsByStatus();
         } else {
-          this.error = 'Error al cargar los registros pendientes';
+          this.error = 'Error al cargar los registros';
         }
         this.loading = false;
       },
@@ -48,8 +49,20 @@ export class PendingRegistrationsComponent implements OnInit {
     });
   }
 
+  separateRegistrationsByStatus(): void {
+    this.pendingRegistrations = this.allRegistrations.filter(
+      (reg: any) => reg.status === 'pending'
+    );
+    this.approvedRegistrations = this.allRegistrations.filter(
+      (reg: any) => reg.status === 'approved'
+    );
+    this.rejectedRegistrations = this.allRegistrations.filter(
+      (reg: any) => reg.status === 'rejected'
+    );
+  }
+
   approveRegistration(registration: any): void {
-    if (!registration.id || this.loading) return;
+    if (!registration.id || this.loading || registration.status !== 'pending') return;
 
     if (!confirm(`¿Estás seguro de aprobar el registro de ${registration.full_name}?`)) {
       return;
@@ -63,8 +76,13 @@ export class PendingRegistrationsComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.success = 'Registro aprobado exitosamente';
-          // Recargar la lista de registros
-          this.loadRegistrations();
+          // Actualizar el estado del registro localmente
+          registration.status = 'approved';
+          registration.updated_at = new Date().toISOString();
+          // Mover el registro de pendientes a aprobados
+          this.pendingRegistrations = this.pendingRegistrations.filter(r => r.id !== registration.id);
+          this.approvedRegistrations.unshift(registration);
+          this.loading = false;
           setTimeout(() => {
             this.success = '';
           }, 3000);
@@ -81,7 +99,7 @@ export class PendingRegistrationsComponent implements OnInit {
   }
 
   rejectRegistration(registration: any): void {
-    if (!registration.id || this.loading) return;
+    if (!registration.id || this.loading || registration.status !== 'pending') return;
 
     const reason = prompt(`¿Por qué deseas rechazar el registro de ${registration.full_name}? (Opcional)`);
 
@@ -93,8 +111,16 @@ export class PendingRegistrationsComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.success = 'Registro rechazado exitosamente';
-          // Recargar la lista de registros
-          this.loadRegistrations();
+          // Actualizar el estado del registro localmente
+          registration.status = 'rejected';
+          registration.updated_at = new Date().toISOString();
+          if (reason) {
+            registration.rejection_reason = reason;
+          }
+          // Mover el registro de pendientes a rechazados
+          this.pendingRegistrations = this.pendingRegistrations.filter(r => r.id !== registration.id);
+          this.rejectedRegistrations.unshift(registration);
+          this.loading = false;
           setTimeout(() => {
             this.success = '';
           }, 3000);

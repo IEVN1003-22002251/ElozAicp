@@ -1311,7 +1311,7 @@ export class CamerasComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/dashboard']);
   }
 
   openSettings(): void {

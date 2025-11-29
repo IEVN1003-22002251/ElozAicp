@@ -80,7 +80,7 @@ export class ProfileComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/dashboard']);
   }
 
   openSettings(): void {

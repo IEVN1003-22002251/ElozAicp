@@ -22,6 +22,6 @@ export class PreRegisterComponent {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/dashboard']);
   }
 }

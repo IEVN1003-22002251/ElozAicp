@@ -10,6 +10,7 @@ from routes.notifications import notifications_bp
 from routes.chat import chat_bp
 from routes.banners import banners_bp
 from routes.history import history_bp
+from routes.incidents import incidents_bp
 
 def register_routes(app):
     """Register all blueprints"""
@@ -24,4 +25,5 @@ def register_routes(app):
     app.register_blueprint(chat_bp, url_prefix=f'{api_prefix}/chat')
     app.register_blueprint(banners_bp, url_prefix=f'{api_prefix}/banners')
     app.register_blueprint(history_bp, url_prefix=f'{api_prefix}/history')
+    app.register_blueprint(incidents_bp, url_prefix=f'{api_prefix}/incidents')
 

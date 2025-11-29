@@ -9,18 +9,8 @@ import { VisitorService } from '../../services/visitor.service';
   imports: [CommonModule],
   template: `
     <div class="container">
-      <div class="header-section">
-        <h1>Lista de Visitantes</h1>
-        <div class="header-buttons">
-          <button class="btn btn-back" (click)="goToDashboard()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Regresar al Dashboard
-          </button>
-          <button class="btn btn-primary" (click)="goToAdd()">Agregar Visitante</button>
-        </div>
-      </div>
+      <h1>Lista de Visitantes</h1>
+      <button class="btn btn-primary" (click)="goToAdd()">Agregar Visitante</button>
       
       <div *ngIf="loading" class="loading">Cargando...</div>
       
@@ -46,30 +36,6 @@ import { VisitorService } from '../../services/visitor.service';
       padding: 20px;
       max-width: 1200px;
       margin: 0 auto;
-      min-height: 100vh;
-      background-color: #1a1a1a;
-    }
-    
-    .header-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    
-    .header-section h1 {
-      color: #ffffff;
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-    }
-    
-    .header-buttons {
-      display: flex;
-      gap: 12px;
-      align-items: center;
     }
     
     .visitors-list {
@@ -83,99 +49,16 @@ import { VisitorService } from '../../services/visitor.service';
       background-color: #2a2a2a;
       padding: 20px;
       border-radius: 8px;
-      color: #ffffff;
-    }
-    
-    .visitor-card h3 {
-      color: #ffffff;
-      margin: 0 0 12px 0;
-      font-size: 18px;
-      font-weight: 600;
-    }
-    
-    .visitor-card p {
-      color: rgba(255, 255, 255, 0.8);
-      margin: 8px 0;
-      font-size: 14px;
     }
     
     .loading, .error, .no-data {
       text-align: center;
       padding: 20px;
       margin-top: 20px;
-      color: rgba(255, 255, 255, 0.7);
     }
     
     .error {
       color: #dc3545;
-    }
-    
-    .btn {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .btn-primary {
-      background-color: #007bff;
-      color: #ffffff;
-    }
-    
-    .btn-primary:hover {
-      background-color: #0056b3;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
-    }
-    
-    .btn-back {
-      background-color: transparent;
-      color: #ffffff;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-    }
-    
-    .btn-back:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-    
-    .btn-back svg {
-      width: 16px;
-      height: 16px;
-    }
-    
-    .btn-secondary {
-      background-color: rgba(255, 255, 255, 0.1);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      margin-top: 12px;
-    }
-    
-    .btn-secondary:hover {
-      background-color: rgba(255, 255, 255, 0.2);
-    }
-    
-    @media (max-width: 768px) {
-      .header-section {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      
-      .header-buttons {
-        width: 100%;
-        flex-direction: column;
-      }
-      
-      .header-buttons .btn {
-        width: 100%;
-        justify-content: center;
-      }
     }
   `]
 })
