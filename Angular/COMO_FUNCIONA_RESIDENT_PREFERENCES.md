@@ -290,3 +290,4 @@ Si hay un error al guardar, la app revierte el cambio visual para mantener consi
 | **Valores por defecto** | No visitas, sí personal |
 | **Uso** | Sistema de seguridad consulta esta tabla antes de permitir acceso |
 
+

@@ -390,3 +390,4 @@ SELECT COALESCE(MAX(`order`), 0) + 1 AS next_order FROM banners;
    - Usar tanto `exito`/`success` como `mensaje`/`message` para compatibilidad
    - Incluir siempre el campo `data` con la información
 
+

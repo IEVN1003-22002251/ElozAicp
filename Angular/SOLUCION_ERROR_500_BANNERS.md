@@ -205,3 +205,4 @@ cursor.execute("SELECT * FROM banners")
 3. Elimina cualquier uso de `requests` para obtener datos de la BD
 4. Prueba el endpoint nuevamente
 
+

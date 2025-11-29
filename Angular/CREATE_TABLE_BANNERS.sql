@@ -26,3 +26,4 @@ CREATE TABLE IF NOT EXISTS banners (
 -- - order: Orden de visualización (menor número = aparece primero)
 -- - INDEX: Índices para mejorar el rendimiento de las consultas
 
+

@@ -20,3 +20,4 @@ CREATE TABLE IF NOT EXISTS resident_preferences (
 -- - UNIQUE KEY: Garantiza que cada usuario solo tenga un registro de preferencias
 -- - FOREIGN KEY: Mantiene la integridad referencial con la tabla profiles
 
+
