@@ -29,11 +29,6 @@ import { AuthService } from '../services/auth.service';
             <p class="card-subtitle">Gestionar visitantes</p>
           </div>
           
-          <div class="action-card" (click)="navigateTo('pre-register')">
-            <h3 class="card-title">Pre-registro</h3>
-            <p class="card-subtitle">Registrar nuevo visitante</p>
-          </div>
-          
           <div class="action-card" (click)="navigateTo('pending-registrations')">
             <h3 class="card-title">Registros Pendientes</h3>
             <p class="card-subtitle">Revisar solicitudes</p>
