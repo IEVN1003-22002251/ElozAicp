@@ -263,28 +263,76 @@ def get_visitors():
             return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
         
         cursor = conn.cursor(dictionary=True)
-        query = "SELECT * FROM visitors WHERE 1=1"
+        
+        # Query base para obtener visitantes con JOIN a profiles para obtener el email
+        query = """
+            SELECT 
+                v.*,
+                p.email as resident_email
+            FROM visitors v
+            LEFT JOIN profiles p ON v.created_by = p.id
+            WHERE 1=1
+        """
         params = []
         
         if user_id:
-            query += " AND created_by = %s"
+            query += " AND v.created_by = %s"
             # Convertir user_id a entero para comparar con created_by (INT)
             try:
                 params.append(int(user_id))
             except (ValueError, TypeError):
                 params.append(user_id)
         if status:
-            query += " AND status = %s"
+            query += " AND v.status = %s"
             params.append(status)
         if visitor_type:
-            query += " AND type = %s"
+            query += " AND v.type = %s"
             params.append(visitor_type)
         if search:
-            query += " AND name LIKE %s"
+            query += " AND v.name LIKE %s"
             params.append(f'%{search}%')
+        
+        # Ordenar por fecha de creación descendente (más nuevos primero)
+        query += " ORDER BY v.created_at DESC"
         
         cursor.execute(query, params)
         visitors = cursor.fetchall()
+        
+        # Obtener direcciones desde pending_registrations usando el email del perfil
+        for visitor in visitors:
+            visitor['address'] = None
+            if visitor.get('resident_email'):
+                try:
+                    # Buscar la dirección en pending_registrations usando el email del residente
+                    # Primero intentamos buscar en registros aprobados, luego en cualquier registro
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                        (visitor['resident_email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                    
+                    # Si no encontramos en aprobados, buscar en cualquier registro con ese email
+                    if not pending_reg:
+                        cursor.execute(
+                            "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                            (visitor['resident_email'],)
+                        )
+                        pending_reg = cursor.fetchone()
+                    
+                    if pending_reg:
+                        address_parts = []
+                        if pending_reg.get('street'):
+                            address_parts.append(pending_reg['street'])
+                        if pending_reg.get('house_number'):
+                            address_parts.append(pending_reg['house_number'])
+                        visitor['address'] = ', '.join(address_parts) if address_parts else None
+                        visitor['street'] = pending_reg.get('street')
+                        visitor['house_number'] = pending_reg.get('house_number')
+                except Exception as e:
+                    # Si hay error, simplemente dejar address como None
+                    visitor['address'] = None
+                    print(f"Error obteniendo dirección para visitante {visitor.get('id')}: {str(e)}")
+        
         cursor.close()
         conn.close()
         
@@ -343,6 +391,90 @@ def create_visitor():
         visitor_id = cursor.lastrowid
         cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
         visitor = cursor.fetchone()
+        
+        # Si es un visitante de "solo una vez", generar el QR automáticamente
+        if visitor.get('type') == 'one-time':
+            try:
+                # Generar QR directamente aquí
+                import json
+                import urllib.parse
+                from datetime import timedelta
+                
+                # Obtener información del residente si existe
+                resident_address = None
+                resident_street = None
+                resident_house_number = None
+                
+                if visitor.get('created_by'):
+                    cursor.execute(
+                        "SELECT p.email FROM profiles p WHERE p.id = %s",
+                        (visitor['created_by'],)
+                    )
+                    resident_profile = cursor.fetchone()
+                    if resident_profile and resident_profile.get('email'):
+                        cursor.execute(
+                            "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                            (resident_profile['email'],)
+                        )
+                        pending_reg = cursor.fetchone()
+                        if not pending_reg:
+                            cursor.execute(
+                                "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                                (resident_profile['email'],)
+                            )
+                            pending_reg = cursor.fetchone()
+                        if pending_reg:
+                            resident_street = pending_reg.get('street')
+                            resident_house_number = pending_reg.get('house_number')
+                            address_parts = []
+                            if resident_street:
+                                address_parts.append(resident_street)
+                            if resident_house_number:
+                                address_parts.append(resident_house_number)
+                            resident_address = ', '.join(address_parts) if address_parts else None
+                
+                # Calcular expiración (24 horas desde la creación)
+                visitor_created_at = visitor.get('created_at')
+                expiration_timestamp = None
+                if visitor_created_at:
+                    try:
+                        if isinstance(visitor_created_at, str):
+                            visitor_created_at = datetime.fromisoformat(visitor_created_at.replace('Z', '+00:00'))
+                        expiration_timestamp = (visitor_created_at + timedelta(hours=24)).isoformat()
+                    except:
+                        expiration_timestamp = (datetime.now() + timedelta(hours=24)).isoformat()
+                
+                # Crear objeto QR
+                qr_data_object = {
+                    'type': 'one-time',
+                    'visitor_id': visitor['id'],
+                    'visitor_name': visitor['name'],
+                    'resident_name': '',
+                    'resident_address': resident_address or '',
+                    'resident_street': resident_street or '',
+                    'resident_house_number': resident_house_number or '',
+                    'timestamp': datetime.now().isoformat(),
+                    'created_at': visitor.get('created_at').isoformat() if hasattr(visitor.get('created_at'), 'isoformat') else (visitor.get('created_at') if visitor.get('created_at') else datetime.now().isoformat()),
+                    'expires_at': expiration_timestamp
+                }
+                
+                qr_data_string = json.dumps(qr_data_object)
+                qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(qr_data_string)}"
+                
+                # Guardar el QR en la base de datos
+                cursor.execute(
+                    "UPDATE visitors SET codigo_qr = %s WHERE id = %s",
+                    (qr_code_url, visitor_id)
+                )
+                conn.commit()
+                
+                # Obtener el visitante actualizado
+                cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
+                visitor = cursor.fetchone()
+            except Exception as qr_error:
+                print(f"Error generando QR automático para visitante de solo una vez: {str(qr_error)}")
+                # Continuar sin QR si hay error
+        
         cursor.close()
         conn.close()
         
@@ -399,6 +531,191 @@ def update_visitor(visitor_id):
         
     except Exception as e:
         return jsonify({'mensaje': 'Error: ' + str(e), 'exito': False}), 500
+
+@app.route('/api/visitors/<visitor_id>/generate-qr', methods=['POST'])
+def generate_visitor_qr(visitor_id):
+    """Generate QR code for a visitor"""
+    try:
+        import json
+        from datetime import datetime
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener información del visitante con JOIN para obtener datos del residente
+        query = """
+            SELECT 
+                v.*,
+                p.name as resident_name,
+                p.email as resident_email
+            FROM visitors v
+            LEFT JOIN profiles p ON v.created_by = p.id
+            WHERE v.id = %s
+        """
+        cursor.execute(query, (visitor_id,))
+        visitor = cursor.fetchone()
+        
+        if not visitor:
+            cursor.close()
+            conn.close()
+            return jsonify({'mensaje': 'Visitante no encontrado', 'exito': False}), 404
+        
+        # Verificar que sea un visitante frecuente o de solo una vez
+        visitor_type = visitor.get('type')
+        if visitor_type not in ['visitor', 'one-time']:
+            cursor.close()
+            conn.close()
+            return jsonify({'mensaje': 'Solo se pueden generar códigos QR para visitantes frecuentes o de solo una vez', 'exito': False}), 400
+        
+        # Obtener la dirección del residente desde pending_registrations
+        resident_address = None
+        resident_street = None
+        resident_house_number = None
+        
+        if visitor.get('resident_email'):
+            try:
+                # Buscar la dirección en pending_registrations
+                cursor.execute(
+                    "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                    (visitor['resident_email'],)
+                )
+                pending_reg = cursor.fetchone()
+                
+                # Si no encontramos en aprobados, buscar en cualquier registro
+                if not pending_reg:
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                        (visitor['resident_email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                
+                if pending_reg:
+                    resident_street = pending_reg.get('street')
+                    resident_house_number = pending_reg.get('house_number')
+                    address_parts = []
+                    if resident_street:
+                        address_parts.append(resident_street)
+                    if resident_house_number:
+                        address_parts.append(resident_house_number)
+                    resident_address = ', '.join(address_parts) if address_parts else None
+            except Exception as e:
+                print(f"Error obteniendo dirección para QR: {str(e)}")
+                resident_address = None
+        
+        # Obtener la fecha de creación del visitante para calcular expiración
+        visitor_created_at = visitor.get('created_at')
+        expiration_timestamp = None
+        if visitor_type == 'one-time' and visitor_created_at:
+            # Para visitantes de solo una vez, el QR expira 24 horas después de la creación
+            from datetime import timedelta
+            try:
+                if isinstance(visitor_created_at, str):
+                    # Intentar parsear diferentes formatos de fecha
+                    try:
+                        visitor_created_at = datetime.fromisoformat(visitor_created_at.replace('Z', '+00:00'))
+                    except:
+                        from dateutil import parser
+                        visitor_created_at = parser.parse(visitor_created_at)
+                elif isinstance(visitor_created_at, datetime):
+                    pass  # Ya es un datetime
+                else:
+                    visitor_created_at = datetime.now()
+                
+                expiration_timestamp = (visitor_created_at + timedelta(hours=24)).isoformat()
+            except Exception as e:
+                print(f"Error calculando expiración: {str(e)}")
+                # Si hay error, usar fecha actual + 24 horas
+                expiration_timestamp = (datetime.now() + timedelta(hours=24)).isoformat()
+        
+        # Crear objeto con información completa para el QR (información oculta para el admin)
+        qr_data_object = {
+            'type': visitor_type,  # 'visitor' o 'one-time'
+            'visitor_id': visitor['id'],
+            'visitor_name': visitor['name'],  # Nombre asignado al visitante por el residente
+            'resident_name': visitor.get('resident_name', ''),  # Nombre del residente
+            'resident_address': resident_address or '',  # Domicilio completo
+            'resident_street': resident_street or '',
+            'resident_house_number': resident_house_number or '',
+            'timestamp': datetime.now().isoformat(),
+            'created_at': visitor_created_at.isoformat() if visitor_created_at and hasattr(visitor_created_at, 'isoformat') else (visitor_created_at if visitor_created_at else datetime.now().isoformat()),
+            'expires_at': expiration_timestamp  # Solo para 'one-time', None para 'visitor'
+        }
+        
+        # Convertir a JSON string para el QR
+        qr_data_string = json.dumps(qr_data_object)
+        
+        # Generar URL del QR code usando API externa
+        import urllib.parse
+        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(qr_data_string)}"
+        
+        # Guardar el código QR en la base de datos
+        cursor.execute(
+            "UPDATE visitors SET codigo_qr = %s WHERE id = %s",
+            (qr_code_url, visitor_id)
+        )
+        conn.commit()
+        
+        # Obtener el visitante actualizado
+        cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
+        updated_visitor = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'mensaje': 'Código QR generado correctamente',
+            'visitor': updated_visitor,
+            'qr_code_url': qr_code_url,
+            'qr_data': qr_data_string,
+            'exito': True
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al generar código QR: ' + str(e), 'exito': False}), 500
+
+@app.route('/api/visitors/decode-qr', methods=['POST'])
+def decode_visitor_qr():
+    """Decode QR code data - Solo para admins"""
+    try:
+        import json
+        
+        data = request.get_json()
+        qr_data_string = data.get('qr_data')
+        
+        if not qr_data_string:
+            return jsonify({'mensaje': 'Datos del QR no proporcionados', 'exito': False}), 400
+        
+        # Decodificar el JSON del QR
+        try:
+            qr_data = json.loads(qr_data_string)
+        except json.JSONDecodeError:
+            return jsonify({'mensaje': 'Formato de QR inválido', 'exito': False}), 400
+        
+        # Verificar que sea un QR de visitante
+        if qr_data.get('type') != 'visitor':
+            return jsonify({'mensaje': 'Este código QR no es de un visitante', 'exito': False}), 400
+        
+        # Retornar la información decodificada (solo visible para admin)
+        return jsonify({
+            'mensaje': 'QR decodificado correctamente',
+            'qr_data': qr_data,
+            'visitor_info': {
+                'visitor_id': qr_data.get('visitor_id'),
+                'visitor_name': qr_data.get('visitor_name', ''),
+                'resident_name': qr_data.get('resident_name', ''),
+                'resident_address': qr_data.get('resident_address', ''),
+                'resident_street': qr_data.get('resident_street', ''),
+                'resident_house_number': qr_data.get('resident_house_number', ''),
+                'timestamp': qr_data.get('timestamp')
+            },
+            'exito': True
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al decodificar QR: ' + str(e), 'exito': False}), 500
 
 @app.route('/api/visitors/<visitor_id>', methods=['DELETE'])
 def delete_visitor(visitor_id):

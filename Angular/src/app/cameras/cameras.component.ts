@@ -1311,7 +1311,12 @@ export class CamerasComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    // Si es admin, regresar al dashboard; si es residente, regresar al home
+    if (this.isResident) {
+      this.router.navigate(['/home']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 
   openSettings(): void {

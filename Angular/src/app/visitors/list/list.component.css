@@ -55,6 +55,14 @@
   font-size: 14px;
 }
 
+.visitor-card .address {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .loading, .error, .no-data {
   text-align: center;
   padding: 20px;

@@ -49,4 +49,12 @@ export class VisitorService {
   getVisitorStats(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/stats`);
   }
+
+  generateVisitorQR(visitorId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${visitorId}/generate-qr`, {});
+  }
+
+  decodeVisitorQR(qrData: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/decode-qr`, { qr_data: qrData });
+  }
 }

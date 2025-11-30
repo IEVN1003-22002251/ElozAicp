@@ -132,6 +132,11 @@ export const routes: Routes = [
       import('./chat/chat.routes').then((m) => m.default),
   },
   {
+    path: 'qr-scanner',
+    loadChildren: () =>
+      import('./qr-scanner/qr-scanner.routes').then((m) => m.default),
+  },
+  {
     path: '**',
     redirectTo: '/auth/sing-in'
   }
