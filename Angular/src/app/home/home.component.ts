@@ -15,11 +15,13 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
       <div class="header-section">
         <div class="user-info-header">
           <div class="user-details">
-            <span class="username">{{ profile?.user_name || profile?.name || 'Usuario' }}</span>
-            <div class="location-info">
-              <span class="location-label">Fraccionamiento</span>
-              <span class="location-value">{{ profile?.fraccionamiento_name || 'Villas 123' }}</span>
-              <span class="house-number" *ngIf="profile?.house_number">Casa {{ profile?.house_number }}</span>
+            <span class="username">{{ profile?.name || profile?.user_name || 'Usuario' }}</span>
+            <div class="location-info" *ngIf="profile?.fraccionamiento_name || profile?.street || profile?.house_number">
+              <span class="location-value">
+                <span *ngIf="profile?.fraccionamiento_name">{{ profile.fraccionamiento_name }}</span>
+                <span *ngIf="profile?.street"> {{ profile.street }}</span>
+                <span *ngIf="profile?.house_number"> Casa {{ profile.house_number }}</span>
+              </span>
             </div>
           </div>
           <div class="logo-header">
@@ -179,25 +181,14 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
     .location-info {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .location-label {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.7);
+      margin-top: 4px;
     }
 
     .location-value {
       font-size: 14px;
-      font-weight: 500;
-      color: #ffffff;
-    }
-
-    .house-number {
-      font-size: 14px;
-      font-weight: 500;
-      color: #ffffff;
-      margin-left: 8px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.4;
     }
 
     .logo-header {

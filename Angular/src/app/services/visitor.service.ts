@@ -57,4 +57,13 @@ export class VisitorService {
   decodeVisitorQR(qrData: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/decode-qr`, { qr_data: qrData });
   }
+
+  generateEventQR(eventId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${eventId}/generate-event-qr`, {});
+  }
+
+  getResidentAddress(email: string): Observable<any> {
+    const authUrl = `${environment.apiUrl}/auth/resident-address`;
+    return this.http.get<any>(authUrl, { params: { email } });
+  }
 }

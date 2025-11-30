@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { VisitorService } from '../services/visitor.service';
@@ -7,7 +8,7 @@ import { VisitorService } from '../services/visitor.service';
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="history-container">
       <!-- Header -->
@@ -153,7 +154,7 @@ import { VisitorService } from '../services/visitor.service';
                 Domicilio: {{ record.address }}
               </p>
             </div>
-            <div class="record-status" [class.with-button]="(isAdmin && canChangeStatus(record.status)) || (!isAdmin && record.type === 'visitors' && record.originalType === 'visitor')">
+            <div class="record-status" [class.with-button]="(isAdmin && canChangeStatus(record.status)) || (!isAdmin && record.type === 'visitors' && record.originalType === 'visitor') || record.type === 'events' || (!isAdmin && record.type === 'providers')">
               <span class="status-badge" [class]="'status-' + record.status" *ngIf="isAdmin">
                 {{ getStatusLabel(record.status) }}
               </span>
@@ -187,6 +188,40 @@ import { VisitorService } from '../services/visitor.service';
                     Ver QR
                   </button>
                 </div>
+                <div *ngIf="!isAdmin && record.type === 'providers'" class="resident-provider-status">
+                  <span class="status-badge" [class]="'status-' + record.status">
+                    {{ getStatusLabel(record.status) }}
+                  </span>
+                </div>
+                <div *ngIf="record.type === 'events'" class="event-actions">
+                  <button 
+                    *ngIf="canEditEvent(record)"
+                    class="btn-edit-event"
+                    (click)="openEditEventModal(record)"
+                    [disabled]="record.editing">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Editar
+                  </button>
+                  <button 
+                    class="btn-view-qr btn-view-qr-event"
+                    (click)="viewEventQR(record)"
+                    [disabled]="record.loadingQR">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="5" height="5"></rect>
+                      <rect x="16" y="3" width="5" height="5"></rect>
+                      <rect x="3" y="16" width="5" height="5"></rect>
+                      <path d="M21 16h-3"></path>
+                      <path d="M9 21h3"></path>
+                      <path d="M13 21h3"></path>
+                      <path d="M21 12v-1"></path>
+                      <path d="M12 21v-3"></path>
+                    </svg>
+                    Ver QR
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -198,11 +233,102 @@ import { VisitorService } from '../services/visitor.service';
         </div>
       </div>
       
+      <!-- Modal para editar evento -->
+      <div *ngIf="showEditEventModal" class="edit-modal-overlay" (click)="closeEditEventModal()">
+        <div class="edit-modal-content" (click)="$event.stopPropagation()">
+          <div class="edit-modal-header">
+            <h2>Editar Evento</h2>
+            <button class="btn-close-modal" (click)="closeEditEventModal()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="edit-modal-body">
+            <div *ngIf="editingEvent" class="edit-form">
+              <div class="form-group">
+                <label class="form-label">Nombre del Evento *</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="editingEvent.name"
+                  placeholder="Nombre del evento"
+                  [disabled]="savingEvent">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Fecha del Evento</label>
+                <input
+                  type="date"
+                  class="form-input"
+                  [(ngModel)]="editingEvent.eventDate"
+                  [disabled]="savingEvent">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Hora del Evento</label>
+                <input
+                  type="time"
+                  class="form-input"
+                  [(ngModel)]="editingEvent.eventTime"
+                  [disabled]="savingEvent">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Número de Invitados</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  [(ngModel)]="editingEvent.numberOfGuests"
+                  placeholder="Número de invitados"
+                  min="1"
+                  [disabled]="savingEvent">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Lugar</label>
+                <select
+                  class="form-input form-select"
+                  [(ngModel)]="editingEvent.eventLocation"
+                  [disabled]="savingEvent">
+                  <option value="">Seleccionar lugar</option>
+                  <option value="domicilio">Domicilio</option>
+                  <option value="casa_club">Casa club</option>
+                  <option value="lago">Lago</option>
+                  <option value="kiosco">Kiosco</option>
+                </select>
+              </div>
+              
+              <div *ngIf="editEventError" class="error-message">
+                {{ editEventError }}
+              </div>
+              
+              <div class="edit-modal-actions">
+                <button 
+                  class="btn-cancel-edit"
+                  (click)="closeEditEventModal()"
+                  [disabled]="savingEvent">
+                  Cancelar
+                </button>
+                <button 
+                  class="btn-save-edit"
+                  (click)="saveEventChanges()"
+                  [disabled]="savingEvent || !editingEvent.name">
+                  <span *ngIf="!savingEvent">Guardar Cambios</span>
+                  <span *ngIf="savingEvent">Guardando...</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal para mostrar QR -->
       <div *ngIf="showQRModal" class="qr-modal-overlay" (click)="closeQRModal()">
         <div class="qr-modal-content" (click)="$event.stopPropagation()">
           <div class="qr-modal-header">
-            <h2>Código QR - {{ selectedVisitorForQR?.name }}</h2>
+            <h2>Código QR - {{ selectedVisitorForQR?.name || selectedEventForQR?.name }}</h2>
             <button class="btn-close-modal" (click)="closeQRModal()">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -211,12 +337,18 @@ import { VisitorService } from '../services/visitor.service';
             </button>
           </div>
           <div class="qr-modal-body">
-            <div *ngIf="selectedVisitorQR" class="qr-code-display">
-              <img [src]="selectedVisitorQR" alt="QR Code" class="qr-image" #qrImage />
+            <div *ngIf="selectedVisitorQR || selectedEventQR" class="qr-code-display">
+              <img [src]="selectedVisitorQR || selectedEventQR" alt="QR Code" class="qr-image" #qrImage />
             </div>
-            <div *ngIf="!selectedVisitorQR && !loadingQR" class="qr-generate-message">
+            <div *ngIf="!selectedVisitorQR && !selectedEventQR && !loadingQR && selectedVisitorForQR" class="qr-generate-message">
               <p>No se ha generado un código QR para este visitante.</p>
               <button class="btn-generate-qr" (click)="generateQRForVisitor()">
+                Generar Código QR
+              </button>
+            </div>
+            <div *ngIf="!selectedVisitorQR && !selectedEventQR && !loadingQR && selectedEventForQR" class="qr-generate-message">
+              <p>No se ha generado un código QR para este evento.</p>
+              <button class="btn-generate-qr" (click)="generateQRForEvent()">
                 Generar Código QR
               </button>
             </div>
@@ -225,6 +357,38 @@ import { VisitorService } from '../services/visitor.service';
               <p>Generando código QR...</p>
             </div>
             <p *ngIf="selectedVisitorQR" class="qr-instruction">Escanea este código para validar el acceso del visitante</p>
+            <p *ngIf="selectedEventQR" class="qr-instruction">Comparte este código con los invitados del evento</p>
+            
+            <!-- Información General del Evento (para compartir con invitados) -->
+            <div *ngIf="selectedEventForQR && eventQRData" class="qr-event-summary">
+              <h3 class="qr-summary-title">Información del Evento</h3>
+              <div class="qr-summary-content">
+                <p class="qr-summary-item" *ngIf="eventQRData.event_name">
+                  <strong>Evento:</strong> {{ eventQRData.event_name }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.event_date">
+                  <strong>Fecha:</strong> {{ formatEventDate(eventQRData.event_date) }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.event_time">
+                  <strong>Hora:</strong> {{ formatEventTime(eventQRData.event_time) }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.number_of_guests">
+                  <strong>Invitados esperados:</strong> {{ eventQRData.number_of_guests }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.resident_name">
+                  <strong>Anfitrión:</strong> {{ eventQRData.resident_name }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.event_location === 'domicilio' && eventQRData.resident_address">
+                  <strong>Lugar:</strong> {{ eventQRData.resident_address }}
+                </p>
+                <p class="qr-summary-item" *ngIf="eventQRData.event_location && eventQRData.event_location !== 'domicilio'">
+                  <strong>Lugar:</strong> {{ getLocationLabel(eventQRData.event_location) }}
+                </p>
+                <p class="qr-summary-item" *ngIf="!eventQRData.event_location">
+                  <strong>Lugar:</strong> No especificado
+                </p>
+              </div>
+            </div>
             
             <!-- Información oculta del QR (solo visible para admin) -->
             <div *ngIf="selectedVisitorQR && isAdmin && qrDecodedInfo" class="qr-hidden-info">
@@ -236,7 +400,7 @@ import { VisitorService } from '../services/visitor.service';
               </div>
             </div>
             
-            <div *ngIf="selectedVisitorQR" class="qr-share-actions">
+            <div *ngIf="selectedVisitorQR || selectedEventQR" class="qr-share-actions">
               <button class="btn-share-qr" (click)="shareQR()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="18" cy="5" r="3"></circle>
@@ -631,6 +795,12 @@ import { VisitorService } from '../services/visitor.service';
       gap: 12px;
       align-items: center;
     }
+
+    .resident-provider-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     
     .btn-view-qr {
       padding: 8px 16px;
@@ -662,6 +832,264 @@ import { VisitorService } from '../services/visitor.service';
     .btn-view-qr svg {
       width: 16px;
       height: 16px;
+    }
+
+    .event-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-view-qr-event {
+      background-color: #d4a574;
+    }
+
+    .btn-view-qr-event:hover:not(:disabled) {
+      background-color: #c49564;
+      box-shadow: 0 4px 8px rgba(212, 165, 116, 0.3);
+    }
+
+    .btn-edit-event {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      background-color: #007bff;
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-edit-event:hover:not(:disabled) {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-edit-event:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-edit-event svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Edit Event Modal Styles */
+    .edit-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+      padding: 20px;
+    }
+
+    .edit-modal-content {
+      background-color: #2a2a2a;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .edit-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .edit-modal-header h2 {
+      color: #ffffff;
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .edit-modal-body {
+      padding: 24px;
+    }
+
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .form-input {
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: #1a1a1a;
+      color: #ffffff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-input:focus {
+      border-color: #007bff;
+    }
+
+    .form-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-select {
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: #1a1a1a;
+      color: #ffffff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s ease;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+    }
+
+    .form-select:focus {
+      border-color: #007bff;
+    }
+
+    .form-select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-select option {
+      background-color: #1a1a1a;
+      color: #ffffff;
+      padding: 12px;
+    }
+
+    .error-message {
+      padding: 12px;
+      background-color: rgba(220, 53, 69, 0.1);
+      border: 1px solid rgba(220, 53, 69, 0.3);
+      border-radius: 8px;
+      color: #dc3545;
+      font-size: 14px;
+    }
+
+    .edit-modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn-cancel-edit,
+    .btn-save-edit {
+      flex: 1;
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-cancel-edit {
+      background-color: #6c757d;
+      color: #ffffff;
+    }
+
+    .btn-cancel-edit:hover:not(:disabled) {
+      background-color: #5a6268;
+    }
+
+    .btn-save-edit {
+      background-color: #007bff;
+      color: #ffffff;
+    }
+
+    .btn-save-edit:hover:not(:disabled) {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-cancel-edit:disabled,
+    .btn-save-edit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Información general del evento (para compartir con invitados) */
+    .qr-event-summary {
+      background-color: rgba(212, 165, 116, 0.15);
+      border: 1px solid rgba(212, 165, 116, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      width: 100%;
+    }
+
+    .qr-summary-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #d4a574;
+      margin: 0 0 16px 0;
+      text-align: center;
+    }
+
+    .qr-summary-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .qr-summary-item {
+      font-size: 14px;
+      color: #ffffff;
+      margin: 0;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .qr-summary-item strong {
+      color: #d4a574;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .qr-event-info {
+      background-color: rgba(212, 165, 116, 0.1);
+      border: 1px solid rgba(212, 165, 116, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      width: 100%;
     }
 
     .status-badge {
@@ -1005,9 +1433,16 @@ export class HistoryComponent implements OnInit {
   isAdmin: boolean = false;
   showQRModal: boolean = false;
   selectedVisitorForQR: any = null;
+  selectedEventForQR: any = null;
   selectedVisitorQR: string = '';
+  selectedEventQR: string = '';
   loadingQR: boolean = false;
   qrDecodedInfo: any = null;
+  eventQRData: any = null;
+  showEditEventModal: boolean = false;
+  editingEvent: any = null;
+  savingEvent: boolean = false;
+  editEventError: string = '';
 
   constructor(
     private router: Router,
@@ -1075,8 +1510,13 @@ export class HistoryComponent implements OnInit {
             created_by: visitor.created_by,
             address: visitor.address || null,
             codigo_qr: visitor.codigo_qr || null, // Incluir el código QR si existe
+            eventDate: visitor.eventDate || null, // Para eventos
+            eventTime: visitor.eventTime || null, // Para eventos
+            numberOfGuests: visitor.numberOfGuests || null, // Para eventos
+            eventLocation: visitor.eventLocation || null, // Para eventos
             updating: false,
-            loadingQR: false
+            loadingQR: false,
+            editing: false
           }));
           
           // Ordenar por fecha de creación descendente (más nuevos primero)
@@ -1376,82 +1816,227 @@ export class HistoryComponent implements OnInit {
     });
   }
 
+  viewEventQR(record: any): void {
+    this.selectedEventForQR = record;
+    this.selectedVisitorForQR = null;
+    this.qrDecodedInfo = null;
+    this.eventQRData = null;
+    
+    // Si ya tiene QR, mostrarlo y decodificar los datos
+    if (record.codigo_qr) {
+      this.selectedEventQR = record.codigo_qr;
+      this.showQRModal = true;
+      this.decodeEventQRData(record.codigo_qr);
+    } else {
+      // Si no tiene QR, intentar obtenerlo del evento
+      this.loadingQR = true;
+      this.showQRModal = true;
+      this.selectedEventQR = '';
+      
+      // Obtener el evento completo para ver si tiene QR
+      this.visitorService.getVisitor(record.id).subscribe({
+        next: (response) => {
+          this.loadingQR = false;
+          if (response.exito && response.visitor) {
+            if (response.visitor.codigo_qr) {
+              record.codigo_qr = response.visitor.codigo_qr;
+              this.selectedEventQR = response.visitor.codigo_qr;
+              this.decodeEventQRData(response.visitor.codigo_qr);
+            }
+          }
+        },
+        error: (err) => {
+          this.loadingQR = false;
+          console.error('Error al obtener evento:', err);
+        }
+      });
+    }
+  }
+
+  decodeEventQRData(qrUrl: string): void {
+    // Extraer los datos del QR de la URL
+    try {
+      const url = new URL(qrUrl);
+      const qrDataParam = url.searchParams.get('data');
+      
+      if (qrDataParam) {
+        const qrDataString = decodeURIComponent(qrDataParam);
+        try {
+          const qrData = JSON.parse(qrDataString);
+          // El QR simplificado solo tiene {'t': 'event', 'id': id}
+          // Necesitamos obtener la información completa del evento desde el backend
+          if (qrData.t === 'event' && qrData.id) {
+            // Obtener información completa del evento desde el backend
+            this.visitorService.getVisitor(qrData.id).subscribe({
+              next: (visitorResponse) => {
+                if (visitorResponse.exito && visitorResponse.visitor) {
+                  const event = visitorResponse.visitor;
+                  // Construir eventQRData con la información completa
+                  this.eventQRData = {
+                    event_name: event.name || '',
+                    event_date: event.eventDate || '',
+                    event_time: event.eventTime || '',
+                    number_of_guests: event.numberOfGuests || '',
+                    event_location: event.eventLocation || event.event_location || '',
+                    resident_name: event.resident_name || '',
+                    resident_address: event.resident_address || ''
+                  };
+                  
+                  // Si el lugar es domicilio, obtener la dirección del residente
+                  if (this.eventQRData.event_location === 'domicilio' && event.resident_email) {
+                    this.visitorService.getResidentAddress(event.resident_email).subscribe({
+                      next: (addressResponse) => {
+                        if (addressResponse.exito && addressResponse.address) {
+                          this.eventQRData.resident_address = addressResponse.address;
+                        }
+                      },
+                      error: (err) => {
+                        console.error('Error al obtener dirección del residente:', err);
+                      }
+                    });
+                  }
+                }
+              },
+              error: (err) => {
+                console.error('Error al obtener información del evento:', err);
+              }
+            });
+          }
+        } catch (parseError) {
+          console.error('Error al parsear QR del evento:', parseError);
+        }
+      }
+    } catch (error) {
+      console.error('Error al procesar URL del QR del evento:', error);
+    }
+  }
+
+  generateQRForEvent(): void {
+    if (!this.selectedEventForQR || this.loadingQR) return;
+
+    this.loadingQR = true;
+    this.visitorService.generateEventQR(this.selectedEventForQR.id).subscribe({
+      next: (response) => {
+        this.loadingQR = false;
+        if (response.exito) {
+          // Actualizar el registro con el código QR
+          this.selectedEventForQR.codigo_qr = response.qr_code_url;
+          this.selectedEventQR = response.qr_code_url;
+          
+          // Actualizar también en el array de records
+          const recordIndex = this.records.findIndex(r => r.id === this.selectedEventForQR.id);
+          if (recordIndex !== -1) {
+            this.records[recordIndex].codigo_qr = response.qr_code_url;
+          }
+          
+          // Usar event_info si está disponible, de lo contrario intentar obtener del evento
+          if (response.event_info) {
+            try {
+              this.eventQRData = JSON.parse(response.event_info);
+            } catch (e) {
+              console.error('Error al parsear event_info:', e);
+              // Fallback: construir desde response.event
+              this.buildEventQRDataFromResponse(response);
+            }
+          } else {
+            // Fallback: construir desde response.event
+            this.buildEventQRDataFromResponse(response);
+          }
+        } else {
+          alert('Error al generar código QR: ' + (response.mensaje || 'Error desconocido'));
+        }
+      },
+      error: (err) => {
+        this.loadingQR = false;
+        console.error('Error al generar QR del evento:', err);
+        alert('Error al generar código QR. Por favor, intenta de nuevo.');
+      }
+    });
+  }
+
+  private buildEventQRDataFromResponse(response: any): void {
+    if (response.event) {
+      this.eventQRData = {
+        event_name: response.event.name || '',
+        event_date: response.event.eventDate || '',
+        event_time: response.event.eventTime || '',
+        number_of_guests: response.event.numberOfGuests || '',
+        event_location: response.event.eventLocation || response.event.event_location || '',
+        resident_name: response.event.resident_name || '',
+        resident_address: ''
+      };
+    }
+  }
+
+  formatEventDate(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('es-ES', options);
+  }
+
+  formatEventTime(timeString: string): string {
+    if (!timeString) return '';
+    // Formato HH:mm a formato 12 horas
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'p.m.' : 'a.m.';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  getLocationLabel(location: string): string {
+    if (!location) return '';
+    const locationMap: { [key: string]: string } = {
+      'domicilio': 'Domicilio',
+      'casa_club': 'Casa club',
+      'lago': 'Lago',
+      'kiosco': 'Kiosco'
+    };
+    return locationMap[location] || location;
+  }
+
   closeQRModal(): void {
     this.showQRModal = false;
     this.selectedVisitorForQR = null;
+    this.selectedEventForQR = null;
     this.selectedVisitorQR = '';
+    this.selectedEventQR = '';
     this.loadingQR = false;
     this.qrDecodedInfo = null;
+    this.eventQRData = null;
   }
 
   shareQR(): void {
-    if (!this.selectedVisitorQR) return;
+    const qrUrl = this.selectedVisitorQR || this.selectedEventQR;
+    if (!qrUrl) return;
 
-    // Intentar usar la Web Share API si está disponible
-    if (navigator.share) {
-      // Convertir la URL del QR a blob para compartir
-      fetch(this.selectedVisitorQR)
-        .then(response => response.blob())
-        .then(blob => {
-          const file = new File([blob], `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`, { type: 'image/png' });
-          navigator.share({
-            title: `Código QR - ${this.selectedVisitorForQR?.name || 'Visitante'}`,
-            text: `Código QR para el acceso del visitante ${this.selectedVisitorForQR?.name || ''}`,
-            files: [file]
-          }).catch(err => {
-            console.log('Error al compartir:', err);
-            // Si falla, intentar descargar
-            this.downloadQR();
-          });
-        })
-        .catch(err => {
-          console.error('Error al obtener la imagen:', err);
-          // Si falla, intentar compartir la URL
-          this.shareQRUrl();
-        });
-    } else {
-      // Si no hay soporte para compartir, copiar URL al portapapeles o descargar
-      this.shareQRUrl();
-    }
-  }
-
-  shareQRUrl(): void {
-    if (!this.selectedVisitorQR) return;
-
-    // Copiar la URL al portapapeles
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(this.selectedVisitorQR).then(() => {
-        alert('URL del código QR copiada al portapapeles');
-      }).catch(err => {
-        console.error('Error al copiar:', err);
-        this.downloadQR();
-      });
-    } else {
-      // Fallback: descargar
-      this.downloadQR();
-    }
-  }
-
-  downloadQR(): void {
-    if (!this.selectedVisitorQR) return;
-
-    // Crear una imagen para cargar el QR
+    // Crear una imagen con la información del evento/visitante
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     img.onload = () => {
-      // Crear un canvas para combinar el QR y el texto
+      // Crear un canvas para combinar el QR y la información
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
-      if (!ctx) return;
+      if (!ctx) {
+        // Si no se puede crear canvas, usar método anterior
+        this.shareQRUrl();
+        return;
+      }
       
       // Configurar dimensiones del canvas
-      const qrSize = 400; // Tamaño del QR
+      const qrSize = 400;
       const padding = 40;
-      const textHeight = 120;
+      const isEvent = !!this.selectedEventForQR && !!this.eventQRData;
+      const infoHeight = isEvent ? 200 : 120;
       const canvasWidth = qrSize + (padding * 2);
-      const canvasHeight = qrSize + textHeight + (padding * 3);
+      const canvasHeight = qrSize + infoHeight + (padding * 3);
       
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -1468,17 +2053,207 @@ export class HistoryComponent implements OnInit {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       
-      // Título "Acceso"
-      ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.fillText('Acceso', canvasWidth / 2, qrSize + padding + 20);
+      let yPos = qrSize + padding + 20;
       
-      // Texto principal
-      ctx.font = '16px Arial, sans-serif';
-      const line1 = 'Escanea este código para ingresar de forma segura.';
-      const line2 = 'Uso exclusivo de personal autorizado.';
+      // Si es un evento, mostrar información del evento
+      if (isEvent && this.eventQRData) {
+        ctx.font = 'bold 20px Arial, sans-serif';
+        ctx.fillText(this.eventQRData.event_name || 'Evento', canvasWidth / 2, yPos);
+        yPos += 30;
+        
+        ctx.font = '14px Arial, sans-serif';
+        
+        if (this.eventQRData.event_date) {
+          ctx.fillText(`Fecha: ${this.formatEventDate(this.eventQRData.event_date)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.event_time) {
+          ctx.fillText(`Hora: ${this.formatEventTime(this.eventQRData.event_time)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.number_of_guests) {
+          ctx.fillText(`Invitados: ${this.eventQRData.number_of_guests}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.resident_name) {
+          ctx.fillText(`Anfitrión: ${this.eventQRData.resident_name}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.resident_address && this.eventQRData.event_location === 'domicilio') {
+          ctx.fillText(`Dirección: ${this.eventQRData.resident_address}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        } else if (this.eventQRData.event_location && this.eventQRData.event_location !== 'domicilio') {
+          ctx.fillText(`Lugar: ${this.getLocationLabel(this.eventQRData.event_location)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+      } else {
+        // Texto genérico para visitantes
+        ctx.font = 'bold 24px Arial, sans-serif';
+        ctx.fillText('Acceso', canvasWidth / 2, yPos);
+        yPos += 30;
+        
+        ctx.font = '16px Arial, sans-serif';
+        ctx.fillText('Escanea este código para ingresar de forma segura.', canvasWidth / 2, yPos);
+        yPos += 20;
+        ctx.fillText('Uso exclusivo de personal autorizado.', canvasWidth / 2, yPos);
+      }
       
-      ctx.fillText(line1, canvasWidth / 2, qrSize + padding + 50);
-      ctx.fillText(line2, canvasWidth / 2, qrSize + padding + 75);
+      // Convertir canvas a blob y compartir
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const fileName = this.selectedEventForQR 
+            ? `QR-Evento-${this.selectedEventForQR?.name || 'evento'}.png`
+            : `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+          const title = this.selectedEventForQR
+            ? `Código QR - ${this.selectedEventForQR?.name || 'Evento'}`
+            : `Código QR - ${this.selectedVisitorForQR?.name || 'Visitante'}`;
+          const text = this.selectedEventForQR
+            ? `Código QR para el evento ${this.selectedEventForQR?.name || ''}`
+            : `Código QR para el acceso del visitante ${this.selectedVisitorForQR?.name || ''}`;
+          
+          // Intentar usar la Web Share API si está disponible
+          if (navigator.share) {
+            navigator.share({
+              title: title,
+              text: text,
+              files: [file]
+            }).catch(err => {
+              console.log('Error al compartir:', err);
+              // Si falla, intentar descargar
+              this.downloadQR();
+            });
+          } else {
+            // Si no hay soporte para compartir, descargar
+            this.downloadQR();
+          }
+        } else {
+          this.shareQRUrl();
+        }
+      }, 'image/png');
+    };
+    
+    img.onerror = () => {
+      // Si falla, intentar compartir la URL
+      this.shareQRUrl();
+    };
+    
+    img.src = qrUrl;
+  }
+
+  shareQRUrl(): void {
+    const qrUrl = this.selectedVisitorQR || this.selectedEventQR;
+    if (!qrUrl) return;
+
+    // Copiar la URL al portapapeles
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(qrUrl).then(() => {
+        alert('URL del código QR copiada al portapapeles');
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+        this.downloadQR();
+      });
+    } else {
+      // Fallback: descargar
+      this.downloadQR();
+    }
+  }
+
+  downloadQR(): void {
+    const qrUrl = this.selectedVisitorQR || this.selectedEventQR;
+    if (!qrUrl) return;
+
+    // Crear una imagen para cargar el QR
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      // Crear un canvas para combinar el QR y el texto
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+      
+      // Configurar dimensiones del canvas
+      const qrSize = 400; // Tamaño del QR
+      const padding = 40;
+      const isEvent = !!this.selectedEventForQR && !!this.eventQRData;
+      const infoHeight = isEvent ? 200 : 120; // Más espacio si hay información del evento
+      const canvasWidth = qrSize + (padding * 2);
+      const canvasHeight = qrSize + infoHeight + (padding * 3);
+      
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // Fondo blanco
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      
+      // Dibujar el QR code
+      ctx.drawImage(img, padding, padding, qrSize, qrSize);
+      
+      // Configurar el texto
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      
+      let yPos = qrSize + padding + 20;
+      
+      // Si es un evento, mostrar información del evento
+      if (isEvent && this.eventQRData) {
+        // Título del evento
+        ctx.font = 'bold 20px Arial, sans-serif';
+        ctx.fillText(this.eventQRData.event_name || 'Evento', canvasWidth / 2, yPos);
+        yPos += 30;
+        
+        // Información del evento
+        ctx.font = '14px Arial, sans-serif';
+        
+        if (this.eventQRData.event_date) {
+          ctx.fillText(`Fecha: ${this.formatEventDate(this.eventQRData.event_date)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.event_time) {
+          ctx.fillText(`Hora: ${this.formatEventTime(this.eventQRData.event_time)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.number_of_guests) {
+          ctx.fillText(`Invitados: ${this.eventQRData.number_of_guests}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.resident_name) {
+          ctx.fillText(`Anfitrión: ${this.eventQRData.resident_name}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+        
+        if (this.eventQRData.resident_address && this.eventQRData.event_location === 'domicilio') {
+          ctx.fillText(`Dirección: ${this.eventQRData.resident_address}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        } else if (this.eventQRData.event_location && this.eventQRData.event_location !== 'domicilio') {
+          ctx.fillText(`Lugar: ${this.getLocationLabel(this.eventQRData.event_location)}`, canvasWidth / 2, yPos);
+          yPos += 20;
+        }
+      } else {
+        // Texto genérico para visitantes
+        ctx.font = 'bold 24px Arial, sans-serif';
+        ctx.fillText('Acceso', canvasWidth / 2, yPos);
+        yPos += 30;
+        
+        ctx.font = '16px Arial, sans-serif';
+        const line1 = 'Escanea este código para ingresar de forma segura.';
+        const line2 = 'Uso exclusivo de personal autorizado.';
+        
+        ctx.fillText(line1, canvasWidth / 2, yPos);
+        yPos += 20;
+        ctx.fillText(line2, canvasWidth / 2, yPos);
+      }
       
       // Convertir canvas a imagen y descargar
       canvas.toBlob((blob) => {
@@ -1486,7 +2261,10 @@ export class HistoryComponent implements OnInit {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`;
+          const fileName = this.selectedEventForQR
+            ? `QR-Evento-${this.selectedEventForQR?.name || 'evento'}.png`
+            : `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`;
+          link.download = fileName;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -1498,13 +2276,149 @@ export class HistoryComponent implements OnInit {
     img.onerror = () => {
       // Si falla, descargar directamente sin texto
       const link = document.createElement('a');
-      link.href = this.selectedVisitorQR;
-      link.download = `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`;
+      link.href = qrUrl;
+      const fileName = this.selectedEventForQR
+        ? `QR-Evento-${this.selectedEventForQR?.name || 'evento'}.png`
+        : `QR-${this.selectedVisitorForQR?.name || 'visitante'}.png`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     };
     
-    img.src = this.selectedVisitorQR;
+    img.src = qrUrl;
+  }
+
+  canEditEvent(record: any): boolean {
+    // Solo el residente que creó el evento puede editarlo (no admin)
+    if (this.isAdmin) return false;
+    
+    const currentUser = this.authService.getCurrentUser();
+    const profile = this.authService.getCachedProfile();
+    const userId = currentUser?.id || profile?.id;
+    
+    if (!userId || !record.created_by) return false;
+    
+    // Comparar IDs (pueden ser string o number)
+    const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId;
+    const createdByIdNum = typeof record.created_by === 'string' ? parseInt(record.created_by) : record.created_by;
+    
+    return userIdNum === createdByIdNum;
+  }
+
+  openEditEventModal(record: any): void {
+    // Obtener el evento completo para editar
+    this.visitorService.getVisitor(record.id).subscribe({
+      next: (response) => {
+        if (response.exito && response.visitor) {
+          const event = response.visitor;
+          this.editingEvent = {
+            id: event.id,
+            name: event.name || '',
+            eventDate: event.eventDate ? this.formatDateForInput(event.eventDate) : '',
+            eventTime: event.eventTime || '',
+            numberOfGuests: event.numberOfGuests || '',
+            eventLocation: event.eventLocation || ''
+          };
+          this.showEditEventModal = true;
+          this.editEventError = '';
+        } else if (response.visitor) {
+          const event = response.visitor;
+          this.editingEvent = {
+            id: event.id,
+            name: event.name || '',
+            eventDate: event.eventDate ? this.formatDateForInput(event.eventDate) : '',
+            eventTime: event.eventTime || '',
+            numberOfGuests: event.numberOfGuests || '',
+            eventLocation: event.eventLocation || ''
+          };
+          this.showEditEventModal = true;
+          this.editEventError = '';
+        } else {
+          this.editEventError = 'No se pudo cargar la información del evento';
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar evento para editar:', err);
+        this.editEventError = 'Error al cargar la información del evento';
+      }
+    });
+  }
+
+  formatDateForInput(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    // Formato YYYY-MM-DD para input type="date"
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  saveEventChanges(): void {
+    if (!this.editingEvent || !this.editingEvent.name) {
+      this.editEventError = 'El nombre del evento es requerido';
+      return;
+    }
+
+    this.savingEvent = true;
+    this.editEventError = '';
+
+    const updateData: any = {
+      name: this.editingEvent.name,
+      eventDate: this.editingEvent.eventDate || null,
+      eventTime: this.editingEvent.eventTime || null,
+      numberOfGuests: this.editingEvent.numberOfGuests || null,
+      eventLocation: this.editingEvent.eventLocation || null
+    };
+
+    this.visitorService.updateVisitor(this.editingEvent.id, updateData).subscribe({
+      next: (response) => {
+        this.savingEvent = false;
+        if (response.exito || response.success) {
+          // Actualizar el registro en la lista
+          const recordIndex = this.records.findIndex(r => r.id === this.editingEvent.id);
+          if (recordIndex !== -1) {
+            this.records[recordIndex].name = updateData.name;
+            this.records[recordIndex].eventDate = updateData.eventDate;
+            this.records[recordIndex].eventTime = updateData.eventTime;
+            this.records[recordIndex].numberOfGuests = updateData.numberOfGuests;
+            this.records[recordIndex].eventLocation = updateData.eventLocation;
+          }
+          
+          // Si el evento tiene QR, regenerarlo con la nueva información
+          const record = this.records.find(r => r.id === this.editingEvent.id);
+          if (record && record.codigo_qr) {
+            // Regenerar QR con la nueva información
+            this.visitorService.generateEventQR(this.editingEvent.id).subscribe({
+              next: (qrResponse) => {
+                if (qrResponse.exito && recordIndex !== -1) {
+                  this.records[recordIndex].codigo_qr = qrResponse.qr_code_url;
+                }
+              },
+              error: (qrErr) => {
+                console.error('Error al regenerar QR:', qrErr);
+              }
+            });
+          }
+          
+          this.closeEditEventModal();
+        } else {
+          this.editEventError = response.mensaje || response.error || 'Error al guardar los cambios';
+        }
+      },
+      error: (err) => {
+        this.savingEvent = false;
+        console.error('Error al guardar cambios del evento:', err);
+        this.editEventError = err.error?.mensaje || err.error?.error || 'Error al guardar los cambios. Por favor, intenta de nuevo.';
+      }
+    });
+  }
+
+  closeEditEventModal(): void {
+    this.showEditEventModal = false;
+    this.editingEvent = null;
+    this.editEventError = '';
+    this.savingEvent = false;
   }
 }

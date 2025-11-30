@@ -7,7 +7,7 @@ from flask_cors import CORS
 from config import config
 import mysql.connector
 from mysql.connector import Error
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
 import os
 import uuid
 from dotenv import load_dotenv
@@ -48,6 +48,31 @@ def get_connection():
     except Error as e:
         print(f"Error connecting to MySQL: {e}")
         return None
+
+# Helper function to serialize visitor data for JSON
+def serialize_visitor_for_json(visitor):
+    """Convert datetime, date, and timedelta objects to strings for JSON serialization"""
+    if not visitor:
+        return visitor
+    
+    serialized = {}
+    for key, value in visitor.items():
+        if value is None:
+            serialized[key] = None
+        elif isinstance(value, datetime):
+            serialized[key] = value.isoformat()
+        elif isinstance(value, date):
+            serialized[key] = value.isoformat()
+        elif isinstance(value, timedelta):
+            # Convert timedelta to HH:MM:SS format
+            total_seconds = int(value.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            serialized[key] = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            serialized[key] = value
+    return serialized
 
 # =====================================================
 # ROOT ROUTE
@@ -145,7 +170,20 @@ def get_profile():
             return jsonify({'error': 'Error de conexión a la base de datos', 'exito': False}), 500
         
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM profiles WHERE id = %s", (user_id,))
+        # Obtener perfil con nombre del fraccionamiento si existe la tabla
+        try:
+            query = """
+                SELECT 
+                    p.*,
+                    f.name as fraccionamiento_name
+                FROM profiles p
+                LEFT JOIN fraccionamientos f ON p.fraccionamiento_id = f.id
+                WHERE p.id = %s
+            """
+            cursor.execute(query, (user_id,))
+        except Exception:
+            # Si no existe la tabla fraccionamientos, solo obtener el perfil
+            cursor.execute("SELECT * FROM profiles WHERE id = %s", (user_id,))
         profile = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -157,6 +195,64 @@ def get_profile():
         
     except Exception as e:
         return jsonify({'error': str(e), 'exito': False}), 500
+
+@app.route('/api/auth/resident-address', methods=['GET'])
+def get_resident_address():
+    """Get resident address from pending_registrations based on email"""
+    try:
+        email = request.args.get('email')
+        if not email:
+            return jsonify({'mensaje': 'email es requerido', 'exito': False}), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Buscar la dirección en pending_registrations (primero en aprobados, luego en cualquier registro)
+        cursor.execute(
+            "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+            (email,)
+        )
+        pending_reg = cursor.fetchone()
+        
+        if not pending_reg:
+            cursor.execute(
+                "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                (email,)
+            )
+            pending_reg = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if pending_reg:
+            address_parts = []
+            if pending_reg.get('street'):
+                address_parts.append(pending_reg['street'])
+            if pending_reg.get('house_number'):
+                address_parts.append(pending_reg['house_number'])
+            address = ', '.join(address_parts) if address_parts else None
+            
+            return jsonify({
+                'exito': True,
+                'address': address,
+                'street': pending_reg.get('street', ''),
+                'house_number': pending_reg.get('house_number', ''),
+                'mensaje': 'Dirección encontrada'
+            }), 200
+        else:
+            return jsonify({
+                'exito': False,
+                'address': None,
+                'street': '',
+                'house_number': '',
+                'mensaje': 'No se encontró dirección para este email'
+            }), 404
+        
+    except Exception as e:
+        return jsonify({'mensaje': 'Error: ' + str(e), 'exito': False}), 500
 
 # =====================================================
 # VISITORS ROUTES
@@ -246,10 +342,15 @@ def get_visitors():
                     visitor['address'] = None
                     print(f"Error obteniendo dirección para visitante {visitor.get('id')}: {str(e)}")
         
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        serialized_visitors = []
+        for visitor in visitors:
+            serialized_visitors.append(serialize_visitor_for_json(visitor))
+        
         cursor.close()
         conn.close()
         
-        return jsonify({'visitors': visitors, 'mensaje': 'Visitantes encontrados', 'exito': True}), 200
+        return jsonify({'visitors': serialized_visitors, 'mensaje': 'Visitantes encontrados', 'exito': True}), 200
         
     except Exception as e:
         return jsonify({'mensaje': 'Error al listar visitantes: ' + str(e), 'exito': False}), 500
@@ -265,6 +366,11 @@ def get_visitor(visitor_id):
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
         visitor = cursor.fetchone()
+        
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        if visitor:
+            visitor = serialize_visitor_for_json(visitor)
+        
         cursor.close()
         conn.close()
         
@@ -287,17 +393,37 @@ def create_visitor():
             return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
         
         cursor = conn.cursor(dictionary=True)
-        sql = """INSERT INTO visitors (name, email, phone, type, status, created_by, created_at)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-        values = (
-            visitor_data.get('name'),
-            visitor_data.get('email'),
-            visitor_data.get('phone'),
-            visitor_data.get('type', 'visitor'),
-            visitor_data.get('status', 'active'),
-            visitor_data.get('created_by'),
-            datetime.now()
-        )
+        
+        # Si es un evento, incluir los campos de evento
+        is_event = visitor_data.get('type') == 'event'
+        if is_event:
+            sql = """INSERT INTO visitors (name, email, phone, type, status, created_by, created_at, eventDate, eventTime, numberOfGuests, eventLocation)
+                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            values = (
+                visitor_data.get('name'),
+                visitor_data.get('email'),
+                visitor_data.get('phone'),
+                visitor_data.get('type', 'visitor'),
+                visitor_data.get('status', 'active'),
+                visitor_data.get('created_by'),
+                datetime.now(),
+                visitor_data.get('eventDate') if visitor_data.get('eventDate') else None,
+                visitor_data.get('eventTime') if visitor_data.get('eventTime') else None,
+                visitor_data.get('numberOfGuests') if visitor_data.get('numberOfGuests') else None,
+                visitor_data.get('eventLocation') if visitor_data.get('eventLocation') else None
+            )
+        else:
+            sql = """INSERT INTO visitors (name, email, phone, type, status, created_by, created_at)
+                     VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+            values = (
+                visitor_data.get('name'),
+                visitor_data.get('email'),
+                visitor_data.get('phone'),
+                visitor_data.get('type', 'visitor'),
+                visitor_data.get('status', 'active'),
+                visitor_data.get('created_by'),
+                datetime.now()
+            )
         
         cursor.execute(sql, values)
         conn.commit()
@@ -388,6 +514,9 @@ def create_visitor():
                 print(f"Error generando QR automático para visitante de solo una vez: {str(qr_error)}")
                 # Continuar sin QR si hay error
         
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        visitor = serialize_visitor_for_json(visitor)
+        
         cursor.close()
         conn.close()
         
@@ -412,11 +541,23 @@ def update_visitor(visitor_id):
         
         cursor = conn.cursor(dictionary=True)
         
+        # Mapeo de nombres de campos (camelCase a snake_case si es necesario)
+        # Por ahora, los campos se guardan con camelCase directamente
+        # Si la BD usa snake_case, aquí se mapearían
+        
         # Build update query dynamically
         set_clause = []
         values = []
         for key, value in updates.items():
             if key != 'id':
+                # Los campos eventDate, eventTime, numberOfGuests se guardan tal cual
+                # Si la BD requiere snake_case, descomentar las siguientes líneas:
+                # field_mapping = {
+                #     'eventDate': 'eventDate',  # o 'event_date' si la BD usa snake_case
+                #     'eventTime': 'eventTime',  # o 'event_time' si la BD usa snake_case
+                #     'numberOfGuests': 'numberOfGuests'  # o 'number_of_guests' si la BD usa snake_case
+                # }
+                # db_field = field_mapping.get(key, key)
                 set_clause.append(f"{key} = %s")
                 values.append(value)
         
@@ -430,6 +571,11 @@ def update_visitor(visitor_id):
         conn.commit()
         cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
         visitor = cursor.fetchone()
+        
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        if visitor:
+            visitor = serialize_visitor_for_json(visitor)
+        
         cursor.close()
         conn.close()
         
@@ -543,26 +689,18 @@ def generate_visitor_qr(visitor_id):
                 # Si hay error, usar fecha actual + 24 horas
                 expiration_timestamp = (datetime.now() + timedelta(hours=24)).isoformat()
         
-        # Crear objeto con información completa para el QR (información oculta para el admin)
+        # Crear objeto SIMPLE para el QR (solo datos esenciales para facilitar el escaneo)
         qr_data_object = {
-            'type': visitor_type,  # 'visitor' o 'one-time'
-            'visitor_id': visitor['id'],
-            'visitor_name': visitor['name'],  # Nombre asignado al visitante por el residente
-            'resident_name': visitor.get('resident_name', ''),  # Nombre del residente
-            'resident_address': resident_address or '',  # Domicilio completo
-            'resident_street': resident_street or '',
-            'resident_house_number': resident_house_number or '',
-            'timestamp': datetime.now().isoformat(),
-            'created_at': visitor_created_at.isoformat() if visitor_created_at and hasattr(visitor_created_at, 'isoformat') else (visitor_created_at if visitor_created_at else datetime.now().isoformat()),
-            'expires_at': expiration_timestamp  # Solo para 'one-time', None para 'visitor'
+            't': visitor_type,  # 'visitor' o 'one-time' (abreviado)
+            'id': visitor['id']  # Solo el ID del visitante
         }
         
         # Convertir a JSON string para el QR
         qr_data_string = json.dumps(qr_data_object)
         
-        # Generar URL del QR code usando API externa
+        # Generar URL del QR code usando API externa con tamaño más grande para mejor escaneo
         import urllib.parse
-        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(qr_data_string)}"
+        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={urllib.parse.quote(qr_data_string)}"
         
         # Guardar el código QR en la base de datos
         cursor.execute(
@@ -574,6 +712,10 @@ def generate_visitor_qr(visitor_id):
         # Obtener el visitante actualizado
         cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
         updated_visitor = cursor.fetchone()
+        
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        if updated_visitor:
+            updated_visitor = serialize_visitor_for_json(updated_visitor)
         
         cursor.close()
         conn.close()
@@ -601,34 +743,322 @@ def decode_visitor_qr():
         if not qr_data_string:
             return jsonify({'mensaje': 'Datos del QR no proporcionados', 'exito': False}), 400
         
-        # Decodificar el JSON del QR
+        # Decodificar el JSON del QR (formato simplificado: {'t': 'visitor', 'id': 123})
         try:
             qr_data = json.loads(qr_data_string)
         except json.JSONDecodeError:
             return jsonify({'mensaje': 'Formato de QR inválido', 'exito': False}), 400
         
-        # Verificar que sea un QR de visitante
-        if qr_data.get('type') != 'visitor':
-            return jsonify({'mensaje': 'Este código QR no es de un visitante', 'exito': False}), 400
+        # Obtener el ID del visitante del QR simplificado
+        visitor_id = qr_data.get('id')
+        qr_type = qr_data.get('t')  # 't' es el tipo abreviado
+        
+        if not visitor_id:
+            return jsonify({'mensaje': 'ID de visitante no encontrado en el QR', 'exito': False}), 400
+        
+        # Verificar que sea un QR válido (visitante, one-time o evento)
+        if qr_type not in ['visitor', 'one-time', 'event']:
+            return jsonify({'mensaje': 'Este código QR no es válido para el sistema', 'exito': False}), 400
+        
+        # Obtener información completa del visitante/evento desde la base de datos
+        conn = get_connection()
+        if not conn:
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener información del visitante/evento con JOIN para obtener datos del residente
+        query = """
+            SELECT 
+                v.*,
+                v.eventLocation as eventLocation,
+                p.name as resident_name,
+                p.email as resident_email
+            FROM visitors v
+            LEFT JOIN profiles p ON v.created_by = p.id
+            WHERE v.id = %s
+        """
+        cursor.execute(query, (visitor_id,))
+        visitor = cursor.fetchone()
+        
+        if not visitor:
+            cursor.close()
+            conn.close()
+            return jsonify({'mensaje': 'Visitante o evento no encontrado', 'exito': False}), 404
+        
+        # Si es un evento, retornar información del evento
+        if qr_type == 'event':
+            # Obtener la dirección del residente si el lugar es "domicilio"
+            # Intentar obtener eventLocation de diferentes formas posibles (MySQL puede devolverlo con diferentes nombres)
+            event_location = visitor.get('eventLocation') or visitor.get('eventlocation') or visitor.get('event_location') or None
+            resident_address = None
+            if event_location == 'domicilio' and visitor.get('resident_email'):
+                try:
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                        (visitor['resident_email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                    
+                    if not pending_reg:
+                        cursor.execute(
+                            "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                            (visitor['resident_email'],)
+                        )
+                        pending_reg = cursor.fetchone()
+                    
+                    if pending_reg:
+                        address_parts = []
+                        if pending_reg.get('street'):
+                            address_parts.append(pending_reg['street'])
+                        if pending_reg.get('house_number'):
+                            address_parts.append(pending_reg['house_number'])
+                        resident_address = ', '.join(address_parts) if address_parts else None
+                except Exception as e:
+                    print(f"Error obteniendo dirección para evento: {str(e)}")
+                    resident_address = None
+            
+            # Asegurar que event_location tenga un valor (puede ser None si el evento fue creado antes de agregar el campo)
+            final_event_location = event_location or visitor.get('eventLocation') or visitor.get('eventlocation') or visitor.get('event_location') or None
+            
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'mensaje': 'QR de evento decodificado correctamente',
+                'qr_data': qr_data,
+                'visitor_info': {
+                    'visitor_id': visitor['id'],
+                    'visitor_name': visitor.get('name', ''),
+                    'visitor_type': 'event',
+                    'event_name': visitor.get('name', ''),
+                    'event_date': visitor.get('eventDate', ''),
+                    'event_time': visitor.get('eventTime', ''),
+                    'number_of_guests': visitor.get('numberOfGuests', ''),
+                    'event_location': final_event_location or '',
+                    'resident_name': visitor.get('resident_name', ''),
+                    'resident_address': resident_address or '',
+                    'timestamp': visitor.get('created_at').isoformat() if visitor.get('created_at') and hasattr(visitor.get('created_at'), 'isoformat') else (visitor.get('created_at') if visitor.get('created_at') else '')
+                },
+                'exito': True
+            }), 200
+        
+        # Obtener la dirección del residente desde pending_registrations
+        resident_address = None
+        resident_street = None
+        resident_house_number = None
+        
+        if visitor.get('resident_email'):
+            try:
+                cursor.execute(
+                    "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                    (visitor['resident_email'],)
+                )
+                pending_reg = cursor.fetchone()
+                
+                if not pending_reg:
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                        (visitor['resident_email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                
+                if pending_reg:
+                    resident_street = pending_reg.get('street')
+                    resident_house_number = pending_reg.get('house_number')
+                    address_parts = []
+                    if resident_street:
+                        address_parts.append(resident_street)
+                    if resident_house_number:
+                        address_parts.append(resident_house_number)
+                    resident_address = ', '.join(address_parts) if address_parts else None
+            except Exception as e:
+                print(f"Error obteniendo dirección: {str(e)}")
+                resident_address = None
+        
+        cursor.close()
+        conn.close()
         
         # Retornar la información decodificada (solo visible para admin)
         return jsonify({
             'mensaje': 'QR decodificado correctamente',
             'qr_data': qr_data,
             'visitor_info': {
-                'visitor_id': qr_data.get('visitor_id'),
-                'visitor_name': qr_data.get('visitor_name', ''),
-                'resident_name': qr_data.get('resident_name', ''),
-                'resident_address': qr_data.get('resident_address', ''),
-                'resident_street': qr_data.get('resident_street', ''),
-                'resident_house_number': qr_data.get('resident_house_number', ''),
-                'timestamp': qr_data.get('timestamp')
+                'visitor_id': visitor['id'],
+                'visitor_name': visitor.get('name', ''),
+                'resident_name': visitor.get('resident_name', ''),
+                'resident_address': resident_address or '',
+                'resident_street': resident_street or '',
+                'resident_house_number': resident_house_number or '',
+                'timestamp': visitor.get('created_at').isoformat() if visitor.get('created_at') and hasattr(visitor.get('created_at'), 'isoformat') else (visitor.get('created_at') if visitor.get('created_at') else '')
             },
             'exito': True
         }), 200
         
     except Exception as e:
         return jsonify({'mensaje': 'Error al decodificar QR: ' + str(e), 'exito': False}), 500
+
+@app.route('/api/visitors/<visitor_id>/generate-event-qr', methods=['POST'])
+def generate_event_qr(visitor_id):
+    """Generate QR code for an event"""
+    try:
+        import json
+        from datetime import datetime
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener información del evento con JOIN para obtener datos del residente
+        # Asegurar que eventLocation se seleccione explícitamente
+        query = """
+            SELECT 
+                v.*,
+                v.eventLocation as eventLocation,
+                p.name as resident_name,
+                p.email as resident_email
+            FROM visitors v
+            LEFT JOIN profiles p ON v.created_by = p.id
+            WHERE v.id = %s
+        """
+        cursor.execute(query, (visitor_id,))
+        event = cursor.fetchone()
+        
+        if not event:
+            cursor.close()
+            conn.close()
+            return jsonify({'mensaje': 'Evento no encontrado', 'exito': False}), 404
+        
+        # Verificar que sea un evento
+        event_type = event.get('type')
+        if event_type != 'event':
+            cursor.close()
+            conn.close()
+            return jsonify({'mensaje': 'Solo se pueden generar códigos QR para eventos', 'exito': False}), 400
+        
+        # Obtener la dirección del residente desde pending_registrations
+        resident_address = None
+        resident_street = None
+        resident_house_number = None
+        
+        if event.get('resident_email'):
+            try:
+                # Buscar la dirección en pending_registrations
+                cursor.execute(
+                    "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                    (event['resident_email'],)
+                )
+                pending_reg = cursor.fetchone()
+                
+                # Si no encontramos en aprobados, buscar en cualquier registro
+                if not pending_reg:
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                        (event['resident_email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                
+                if pending_reg:
+                    resident_street = pending_reg.get('street')
+                    resident_house_number = pending_reg.get('house_number')
+                    address_parts = []
+                    if resident_street:
+                        address_parts.append(resident_street)
+                    if resident_house_number:
+                        address_parts.append(resident_house_number)
+                    resident_address = ', '.join(address_parts) if address_parts else None
+            except Exception as e:
+                print(f"Error obteniendo dirección para QR: {str(e)}")
+                resident_address = None
+        
+        # Crear objeto SIMPLE para el QR (solo datos esenciales para facilitar el escaneo)
+        qr_data_object = {
+            't': 'event',  # Tipo abreviado
+            'id': event['id']  # Solo el ID del evento
+        }
+        
+        # Convertir a JSON string para el QR
+        qr_data_string = json.dumps(qr_data_object)
+        
+        # Generar URL del QR code usando API externa con tamaño más grande para mejor escaneo
+        import urllib.parse
+        qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={urllib.parse.quote(qr_data_string)}"
+        
+        # Guardar el código QR en la base de datos
+        cursor.execute(
+            "UPDATE visitors SET codigo_qr = %s WHERE id = %s",
+            (qr_code_url, visitor_id)
+        )
+        conn.commit()
+        
+        # Obtener el evento actualizado
+        cursor.execute("SELECT * FROM visitors WHERE id = %s", (visitor_id,))
+        updated_event = cursor.fetchone()
+        
+        # Convertir objetos datetime, date y timedelta a strings para JSON
+        if updated_event:
+            updated_event = serialize_visitor_for_json(updated_event)
+        
+        # Obtener eventLocation del evento (puede tener diferentes nombres en la BD)
+        event_location = event.get('eventLocation') or event.get('eventlocation') or event.get('event_location') or updated_event.get('eventLocation') or updated_event.get('eventlocation') or updated_event.get('event_location') or None
+        
+        # Convertir eventDate y eventTime a strings si son objetos date/time
+        event_date = event.get('eventDate', '')
+        if event_date:
+            if isinstance(event_date, date):
+                event_date = event_date.isoformat()
+            elif isinstance(event_date, datetime):
+                event_date = event_date.date().isoformat()
+            elif hasattr(event_date, 'strftime'):
+                event_date = event_date.strftime('%Y-%m-%d')
+            else:
+                event_date = str(event_date) if event_date else ''
+        
+        event_time = event.get('eventTime', '')
+        if event_time:
+            if isinstance(event_time, time):
+                event_time = event_time.strftime('%H:%M:%S')
+            elif isinstance(event_time, timedelta):
+                # Convertir timedelta a HH:MM:SS
+                total_seconds = int(event_time.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                seconds = total_seconds % 60
+                event_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            elif hasattr(event_time, 'strftime'):
+                event_time = event_time.strftime('%H:%M:%S')
+            else:
+                event_time = str(event_time) if event_time else ''
+        
+        # Crear objeto con información completa del evento para el frontend
+        event_info = {
+            'event_name': event.get('name', '') or '',
+            'event_date': event_date or '',
+            'event_time': event_time or '',
+            'number_of_guests': event.get('numberOfGuests', '') or '',
+            'event_location': event_location or '',
+            'resident_name': event.get('resident_name', '') or '',
+            'resident_address': resident_address or ''
+        }
+        
+        # Convertir event_info a JSON string para incluirlo en la respuesta
+        event_info_json = json.dumps(event_info)
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'mensaje': 'Código QR del evento generado correctamente',
+            'event': updated_event,
+            'qr_code_url': qr_code_url,
+            'qr_data': qr_data_string,  # QR simplificado para escanear
+            'event_info': event_info_json,  # Información completa del evento para mostrar
+            'exito': True
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'mensaje': 'Error al generar código QR del evento: ' + str(e), 'exito': False}), 500
 
 @app.route('/api/visitors/<visitor_id>', methods=['DELETE'])
 def delete_visitor(visitor_id):
@@ -930,26 +1360,68 @@ def approve_registration(registration_id):
             except (ValueError, TypeError):
                 fraccionamiento_id = None
         
-        # 4. Insertar en profiles (sin especificar id, dejar que AUTO_INCREMENT lo genere)
-        insert_profile_query = """
-            INSERT INTO profiles (
-                name, user_name, email, password, role, 
-                fraccionamiento_id, created_at, updated_at
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-            )
-        """
+        # 4. Verificar qué columnas existen en la tabla profiles
+        cursor.execute("SHOW COLUMNS FROM profiles LIKE 'phone'")
+        has_phone = cursor.fetchone() is not None
         
-        profile_values = (
+        cursor.execute("SHOW COLUMNS FROM profiles LIKE 'street'")
+        has_street = cursor.fetchone() is not None
+        
+        cursor.execute("SHOW COLUMNS FROM profiles LIKE 'house_number'")
+        has_house_number = cursor.fetchone() is not None
+        
+        # 5. Insertar en profiles (sin especificar id, dejar que AUTO_INCREMENT lo genere)
+        # Construir la query dinámicamente según las columnas disponibles
+        base_columns = ['name', 'user_name', 'email', 'password', 'role', 'fraccionamiento_id']
+        base_values = [
             registration['full_name'],  # name en profiles = full_name en pending
             registration.get('user_name'),
             registration['email'],
             password,  # Password en texto plano
             registration.get('role', 'resident'),
             fraccionamiento_id
-        )
+        ]
         
-        cursor.execute(insert_profile_query, profile_values)
+        # Agregar phone si existe la columna
+        if has_phone:
+            base_columns.append('phone')
+            base_values.append(registration.get('phone'))
+        
+        # Agregar street si existe la columna
+        if has_street:
+            base_columns.append('street')
+            base_values.append(registration.get('street'))
+        
+        # Agregar house_number si existe la columna
+        if has_house_number:
+            base_columns.append('house_number')
+            base_values.append(registration.get('house_number'))
+        
+        # Agregar timestamps
+        base_columns.extend(['created_at', 'updated_at'])
+        base_values.extend(['CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP'])
+        
+        # Construir la query de inserción
+        columns_str = ', '.join(base_columns)
+        # Para los timestamps, usar CURRENT_TIMESTAMP directamente en SQL en lugar de placeholders
+        placeholders_list = []
+        for i, col in enumerate(base_columns):
+            if col in ['created_at', 'updated_at']:
+                placeholders_list.append('CURRENT_TIMESTAMP')
+            else:
+                placeholders_list.append('%s')
+        
+        placeholders = ', '.join(placeholders_list)
+        
+        # Filtrar los valores para excluir los timestamps (ya que se usan directamente en SQL)
+        values_for_query = [val for i, val in enumerate(base_values) if base_columns[i] not in ['created_at', 'updated_at']]
+        
+        insert_profile_query = f"""
+            INSERT INTO profiles ({columns_str})
+            VALUES ({placeholders})
+        """
+        
+        cursor.execute(insert_profile_query, values_for_query)
         profile_id = cursor.lastrowid  # Obtener el ID generado por AUTO_INCREMENT
         
         # 6. Actualizar status en pending_registrations
