@@ -80,7 +80,15 @@ export class ProfileComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    // Verificar si el usuario es admin o residente
+    const isAdmin = this.profile?.role === 'admin';
+    
+    // Si es admin, regresar al dashboard; si es residente, regresar al home
+    if (isAdmin) {
+      this.router.navigate(['/dashboard']);
+    } else {
+      this.router.navigate(['/home']);
+    }
   }
 
   openSettings(): void {

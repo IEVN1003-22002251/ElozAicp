@@ -24,9 +24,9 @@ import { AuthService } from '../services/auth.service';
         </div>
         
         <div class="actions-grid">
-          <div class="action-card" (click)="navigateTo('visitors/list')">
-            <h3 class="card-title">Visitantes</h3>
-            <p class="card-subtitle">Gestionar visitantes</p>
+          <div class="action-card" (click)="navigateTo('qr-scanner')">
+            <h3 class="card-title">Escanear QR</h3>
+            <p class="card-subtitle">Escanear códigos QR de residentes y visitantes</p>
           </div>
           
           <div class="action-card" (click)="navigateTo('pre-register')">

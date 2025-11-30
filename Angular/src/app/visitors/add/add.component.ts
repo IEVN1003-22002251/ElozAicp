@@ -63,8 +63,8 @@ export class AddComponent implements OnInit {
   }
 
   private getRedirectRoute(): string {
-    // Si es residente, regresar a pre-register, si no, a la lista de visitantes
-    return this.isResident() ? '/pre-register' : '/visitors/list';
+    // Si es residente, regresar a pre-register, si no, al historial
+    return this.isResident() ? '/pre-register' : '/history';
   }
 
   ngOnInit(): void {
@@ -197,7 +197,10 @@ export class AddComponent implements OnInit {
       // Regresar a la vista de pre-registro
       this.router.navigate(['/pre-register']);
     } else {
-      this.router.navigate(['/visitors/list']);
+      // Si es admin, regresar al historial; si es residente, al home
+      const profile = this.authService.getCachedProfile();
+      const isAdmin = profile?.role === 'admin';
+      this.router.navigate([isAdmin ? '/history' : '/home']);
     }
   }
 

@@ -19,9 +19,10 @@
   <div *ngIf="visitors && visitors.length > 0" class="visitors-list">
     <div *ngFor="let visitor of visitors" class="visitor-card">
       <h3>{{ visitor.name }}</h3>
-      <p>Email: {{ visitor.email }}</p>
+      <p>Email: {{ visitor.email || 'N/A' }}</p>
       <p>Tipo: {{ visitor.type }}</p>
       <p>Estado: {{ visitor.status }}</p>
+      <p *ngIf="visitor.address" class="address">Domicilio: {{ visitor.address }}</p>
       <button class="btn btn-secondary" (click)="editVisitor(visitor.id)">Editar</button>
     </div>
   </div>

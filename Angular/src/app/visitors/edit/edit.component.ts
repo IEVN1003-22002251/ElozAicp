@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { VisitorService } from '../../services/visitor.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-edit',
@@ -65,7 +66,8 @@ export class EditComponent implements OnInit {
   constructor(
     private visitorService: VisitorService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -101,7 +103,10 @@ export class EditComponent implements OnInit {
     this.visitorService.updateVisitor(this.visitor.id, this.visitor).subscribe({
       next: (response) => {
         if (response.exito) {
-          this.router.navigate(['/visitors/list']);
+          // Si es admin, regresar al historial; si es residente, al home
+          const profile = this.authService.getCachedProfile();
+          const isAdmin = profile?.role === 'admin';
+          this.router.navigate([isAdmin ? '/history' : '/home']);
         } else {
           this.error = response.mensaje || 'Error al actualizar visitante';
           this.saving = false;
@@ -115,7 +120,10 @@ export class EditComponent implements OnInit {
   }
 
   cancel(): void {
-    this.router.navigate(['/visitors/list']);
+    // Si es admin, regresar al historial; si es residente, al home
+    const profile = this.authService.getCachedProfile();
+    const isAdmin = profile?.role === 'admin';
+    this.router.navigate([isAdmin ? '/history' : '/home']);
   }
 }
 
