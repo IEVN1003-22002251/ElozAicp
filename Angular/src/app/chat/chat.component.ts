@@ -76,8 +76,13 @@ export class ChatComponent implements OnInit {
   navigateTo(route: string): void {
     this.router.navigate([`/${route}`]);
   }
+<<<<<<< HEAD
+=======
 
   goBack(): void {
     this.router.navigate(['/dashboard']);
   }
+>>>>>>> origin/Alan
 }
+
+
