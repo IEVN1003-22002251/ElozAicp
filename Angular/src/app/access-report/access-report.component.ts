@@ -5,7 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { HistoryService } from '../services/history.service';
 import { VisitorService } from '../services/visitor.service';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
+import { ChartConfiguration, ChartData, ChartType, TooltipItem } from 'chart.js';
 import { Chart, registerables } from 'chart.js';
 
 // Registrar todos los componentes de Chart.js
@@ -554,7 +554,7 @@ export class AccessReportComponent implements OnInit {
           color: '#ffffff',
           font: {
             size: 12,
-            weight: '500'
+            weight: 500
           },
           padding: 15,
           usePointStyle: true,
@@ -570,10 +570,10 @@ export class AccessReportComponent implements OnInit {
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: (context) => {
+          label: (context: TooltipItem<'pie'>) => {
             const label = context.label || '';
             const value = context.parsed || 0;
-            const total = context.dataset.data.reduce((a: any, b: any) => a + b, 0);
+            const total = (context.dataset.data as number[]).reduce((a: number, b: number) => a + b, 0);
             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
             return `${label}: ${value} (${percentage}%)`;
           }
@@ -612,9 +612,9 @@ export class AccessReportComponent implements OnInit {
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: (context) => {
+          label: (context: TooltipItem<'bar'>) => {
             const label = context.label || '';
-            const value = context.parsed.x || 0;
+            const value = (context.parsed as any).x || 0;
             return `${label}: ${value}`;
           }
         }
@@ -689,11 +689,18 @@ export class AccessReportComponent implements OnInit {
 
   ngOnInit(): void {
     const profile = this.authService.getCachedProfile();
-    this.isAdmin = profile?.role === 'admin';
+    const role = profile?.role?.toLowerCase();
+    
+    // Permitir acceso a admin y guard
+    this.isAdmin = role === 'admin' || role === 'guard';
     
     if (!this.isAdmin) {
-      // Si no es admin, redirigir al dashboard
-      this.router.navigate(['/dashboard']);
+      // Si no es admin ni guard, redirigir según el rol
+      if (role === 'resident') {
+        this.router.navigate(['/home']);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
       return;
     }
     
@@ -713,11 +720,12 @@ export class AccessReportComponent implements OnInit {
       return;
     }
 
-    // Verificar si el usuario es admin
-    const isAdmin = profile?.role === 'admin';
+    // Verificar si el usuario es admin o guard
+    const role = profile?.role?.toLowerCase();
+    const isAdmin = role === 'admin' || role === 'guard';
     
-    // Si es admin, no pasar user_id para obtener todos los registros
-    // Si no es admin, obtener solo los registros del usuario
+    // Si es admin o guard, no pasar user_id para obtener todos los registros
+    // Si no es admin ni guard, obtener solo los registros del usuario
     const params: any = {};
     
     if (!isAdmin) {
@@ -974,6 +982,14 @@ export class AccessReportComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    const profile = this.authService.getCachedProfile();
+    const role = profile?.role?.toLowerCase();
+    
+    // Redirigir según el rol
+    if (role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 }

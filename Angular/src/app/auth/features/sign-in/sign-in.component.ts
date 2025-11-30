@@ -342,9 +342,11 @@ export class SignInComponent {
           const profile = this.authService.getCachedProfile();
           const userRole = profile?.role?.toLowerCase();
           
-          // Si es residente, redirigir al home, de lo contrario al dashboard
+          // Redirigir según el rol
           if (userRole === 'resident' || userRole === 'residente') {
             this.router.navigate(['/home']);
+          } else if (userRole === 'guard') {
+            this.router.navigate(['/guard-dashboard']);
           } else {
             this.router.navigate(['/dashboard']);
           }

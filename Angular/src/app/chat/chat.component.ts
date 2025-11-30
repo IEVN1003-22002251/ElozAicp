@@ -263,7 +263,17 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    const profile = this.authService.getCachedProfile();
+    const role = profile?.role?.toLowerCase();
+    
+    // Redirigir según el rol
+    if (role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
+    } else if (role === 'resident') {
+      this.router.navigate(['/home']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 }
 

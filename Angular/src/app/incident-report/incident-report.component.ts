@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } fr
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IncidentService } from '../services/incident.service';
+import { AuthService } from '../services/auth.service';
 
 declare var Chart: any;
 
@@ -23,7 +24,8 @@ export class IncidentReportComponent implements OnInit, AfterViewInit, OnDestroy
 
   constructor(
     private router: Router,
-    private incidentService: IncidentService
+    private incidentService: IncidentService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -287,6 +289,14 @@ export class IncidentReportComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    const profile = this.authService.getCachedProfile();
+    const role = profile?.role?.toLowerCase();
+    
+    // Redirigir según el rol
+    if (role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 }

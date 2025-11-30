@@ -567,10 +567,17 @@ export class AdminBannerComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Verificar que sea admin
+    // Verificar que sea admin o guard
     const profile = this.authService.getCachedProfile();
-    if (!profile || profile.role?.toLowerCase() !== 'admin') {
-      this.router.navigate(['/dashboard']);
+    const role = profile?.role?.toLowerCase();
+    
+    if (!profile || (role !== 'admin' && role !== 'guard')) {
+      // Redirigir según el rol
+      if (role === 'resident') {
+        this.router.navigate(['/home']);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
       return;
     }
 
@@ -819,6 +826,14 @@ export class AdminBannerComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    const profile = this.authService.getCachedProfile();
+    const role = profile?.role?.toLowerCase();
+    
+    // Redirigir según el rol
+    if (role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 }

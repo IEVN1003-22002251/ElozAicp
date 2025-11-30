@@ -200,6 +200,19 @@ export class DashboardComponent implements OnInit {
     
     if (!this.user) {
       this.router.navigate(['/auth/sing-in']);
+      return;
+    }
+    
+    // Si es guardia, redirigir al dashboard de guardia
+    if (this.profile?.role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
+      return;
+    }
+    
+    // Si es residente, redirigir al home
+    if (this.profile?.role === 'resident') {
+      this.router.navigate(['/home']);
+      return;
     }
   }
 

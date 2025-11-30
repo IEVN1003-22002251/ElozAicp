@@ -1311,9 +1311,14 @@ export class CamerasComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    // Si es admin, regresar al dashboard; si es residente, regresar al home
-    if (this.isResident) {
+    const profile = this.authService.getCachedProfile();
+    const role = profile?.role?.toLowerCase();
+    
+    // Redirigir según el rol
+    if (role === 'resident') {
       this.router.navigate(['/home']);
+    } else if (role === 'guard') {
+      this.router.navigate(['/guard-dashboard']);
     } else {
       this.router.navigate(['/dashboard']);
     }

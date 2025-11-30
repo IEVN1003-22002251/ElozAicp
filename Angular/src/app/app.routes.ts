@@ -137,6 +137,21 @@ export const routes: Routes = [
       import('./qr-scanner/qr-scanner.routes').then((m) => m.default),
   },
   {
+    path: 'guard-dashboard',
+    loadChildren: () =>
+      import('./guard-dashboard/guard-dashboard.routes').then((m) => m.default),
+  },
+  {
+    path: 'guard-qr-scanner',
+    loadChildren: () =>
+      import('./guard-qr-scanner/guard-qr-scanner.routes').then((m) => m.default),
+  },
+  {
+    path: 'guard-access-history',
+    loadChildren: () =>
+      import('./guard-access-history/guard-access-history.routes').then((m) => m.default),
+  },
+  {
     path: '**',
     redirectTo: '/auth/sing-in'
   }

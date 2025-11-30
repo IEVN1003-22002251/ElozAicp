@@ -2053,10 +2053,11 @@ def send_chat_message():
                     'mensaje': 'Usuario remitente no encontrado'
                 }), 404
             
-            # Determinar si es admin o residente
-            is_admin = sender.get('role') in ['admin', 'guard']
+            # Determinar si es admin, guard o residente
+            sender_role = sender.get('role')
+            is_admin = sender_role in ['admin', 'guard']
             
-            # Si es una conversación 1 a 1 (admin-residente o viceversa)
+            # Si es una conversación 1 a 1 (admin/guard-residente o viceversa)
             if receiver_id:
                 # Verificar que el receiver existe
                 cursor.execute("SELECT id, role, fraccionamiento_id FROM profiles WHERE id = %s", (receiver_id,))
@@ -2079,14 +2080,18 @@ def send_chat_message():
                     
                     # También insertar en estructura antigua para compatibilidad
                     # Esto asegura que el residente pueda ver el mensaje
+                    # IMPORTANTE: Usar el chat_type según el rol del sender
+                    # - admin -> 'administration'
+                    # - guard -> 'security'
                     try:
+                        chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
                         insert_old = """
                             INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
                             VALUES (%s, %s, %s, %s, NOW())
                         """
                         cursor.execute(insert_old, (
                             sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
-                            'administration',
+                            chat_type_for_message,
                             sender_id,
                             message_text
                         ))
@@ -2095,14 +2100,17 @@ def send_chat_message():
                         
                 except Error as e:
                     # Si las columnas no existen o hay error, usar la estructura antigua
-                    # Guardar con user_id del sender y chat_type 'administration'
+                    # IMPORTANTE: Guardar con chat_type según el rol del sender
+                    # - admin -> 'administration'
+                    # - guard -> 'security'
+                    chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
                     insert_query = """
                         INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
                         VALUES (%s, %s, %s, %s, NOW())
                     """
                     cursor.execute(insert_query, (
                         sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
-                        'administration',
+                        chat_type_for_message,
                         sender_id,
                         message_text
                     ))
@@ -2179,8 +2187,16 @@ def get_chat_messages():
         try:
             messages = []
             
-            # Si es conversación 1 a 1 (admin-residente)
+            # Si es conversación 1 a 1 (admin/guard-residente)
             if sender_id and receiver_id:
+                # Obtener el rol del sender para filtrar correctamente
+                cursor.execute("SELECT role FROM profiles WHERE id = %s", (sender_id,))
+                sender_role_info = cursor.fetchone()
+                sender_role = sender_role_info.get('role') if sender_role_info else None
+                
+                # Determinar el chat_type según el rol del sender
+                target_chat_type = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else None
+                
                 # Primero intentar con estructura nueva (sender_id, receiver_id)
                 try:
                     query_new = """
@@ -2206,18 +2222,34 @@ def get_chat_messages():
                     messages_new = []
                 
                 # SIEMPRE buscar también en estructura antigua (user_id, chat_type)
-                # Obtener todos los mensajes del residente (de cualquier chat_type)
-                query_resident = """
-                    SELECT 
-                        cm.*,
-                        p.name as sender_name,
-                        p.user_name as sender_username
-                    FROM chat_messages cm
-                    LEFT JOIN profiles p ON cm.user_id = p.id
-                    WHERE cm.user_id = %s
-                    ORDER BY cm.created_at ASC
-                """
-                cursor.execute(query_resident, (receiver_id,))
+                # Obtener mensajes del residente, pero SOLO del chat_type correspondiente al rol del sender
+                if target_chat_type:
+                    query_resident = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.user_id = %s
+                          AND cm.chat_type = %s
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_resident, (receiver_id, target_chat_type))
+                else:
+                    # Si no hay target_chat_type, buscar todos los mensajes del residente
+                    query_resident = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.user_id = %s
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_resident, (receiver_id,))
+                
                 messages_resident = cursor.fetchall()
                 
                 # Combinar mensajes del residente, evitando duplicados
@@ -2226,14 +2258,13 @@ def get_chat_messages():
                     if msg.get('id') not in existing_ids:
                         messages.append(msg)
                 
-                # También buscar mensajes enviados por el admin relacionados con este residente
-                # Buscar mensajes del admin en el mismo fraccionamiento y chat_type 'administration'
-                # Primero obtener el fraccionamiento_id del residente
+                # También buscar mensajes enviados por el admin/guard relacionados con este residente
+                # IMPORTANTE: Filtrar según el rol del sender
                 cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (receiver_id,))
                 resident_info = cursor.fetchone()
                 fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
                 
-                if fraccionamiento_id:
+                if fraccionamiento_id and target_chat_type and sender_role:
                     query_admin_sent = """
                         SELECT 
                             cm.*,
@@ -2242,12 +2273,13 @@ def get_chat_messages():
                         FROM chat_messages cm
                         LEFT JOIN profiles p ON cm.user_id = p.id
                         WHERE cm.user_id = %s
-                          AND cm.chat_type = 'administration'
+                          AND cm.chat_type = %s
+                          AND p.role = %s
                           AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
                         ORDER BY cm.created_at ASC
                     """
-                    cursor.execute(query_admin_sent, (sender_id, fraccionamiento_id))
-                else:
+                    cursor.execute(query_admin_sent, (sender_id, target_chat_type, sender_role, fraccionamiento_id))
+                elif target_chat_type and sender_role:
                     query_admin_sent = """
                         SELECT 
                             cm.*,
@@ -2256,14 +2288,17 @@ def get_chat_messages():
                         FROM chat_messages cm
                         LEFT JOIN profiles p ON cm.user_id = p.id
                         WHERE cm.user_id = %s
-                          AND cm.chat_type = 'administration'
+                          AND cm.chat_type = %s
+                          AND p.role = %s
                         ORDER BY cm.created_at ASC
                     """
-                    cursor.execute(query_admin_sent, (sender_id,))
+                    cursor.execute(query_admin_sent, (sender_id, target_chat_type, sender_role))
+                else:
+                    admin_sent_messages = []
                 
-                admin_sent_messages = cursor.fetchall()
+                admin_sent_messages = cursor.fetchall() if (target_chat_type and sender_role) else []
                 
-                # Combinar mensajes del admin también
+                # Combinar mensajes del admin/guard también
                 existing_ids = {m.get('id') for m in messages}
                 for msg in admin_sent_messages:
                     if msg.get('id') not in existing_ids:
@@ -2289,36 +2324,48 @@ def get_chat_messages():
                 messages = cursor.fetchall()
                 
                 # También obtener mensajes del admin/guard dirigidos a este residente
-                # Primero intentar con sender_id/receiver_id
-                try:
-                    query_admin_to_resident = """
-                        SELECT 
-                            cm.*,
-                            s.name as sender_name,
-                            s.user_name as sender_username
-                        FROM chat_messages cm
-                        LEFT JOIN profiles s ON cm.sender_id = s.id
-                        WHERE cm.receiver_id = %s
-                          AND cm.sender_id IN (SELECT id FROM profiles WHERE role IN ('admin', 'guard'))
-                        ORDER BY cm.created_at ASC
-                    """
-                    cursor.execute(query_admin_to_resident, (user_id,))
-                    admin_messages = cursor.fetchall()
-                    
-                    # Combinar mensajes
-                    existing_ids = {m.get('id') for m in messages}
-                    for msg in admin_messages:
-                        if msg.get('id') not in existing_ids:
-                            messages.append(msg)
-                except Error:
-                    pass  # Continuar con la búsqueda alternativa
+                # IMPORTANTE: Filtrar según el chat_type
+                # - chat_type='administration' -> solo mensajes de admin
+                # - chat_type='security' -> solo mensajes de guard
+                target_role = 'admin' if chat_type == 'administration' else 'guard' if chat_type == 'security' else None
                 
-                # SIEMPRE buscar también mensajes del admin en el mismo fraccionamiento y chat_type
+                # Primero intentar con sender_id/receiver_id
+                if target_role:
+                    try:
+                        query_admin_to_resident = """
+                            SELECT 
+                                cm.*,
+                                s.name as sender_name,
+                                s.user_name as sender_username
+                            FROM chat_messages cm
+                            LEFT JOIN profiles s ON cm.sender_id = s.id
+                            WHERE cm.receiver_id = %s
+                              AND s.role = %s
+                            ORDER BY cm.created_at ASC
+                        """
+                        cursor.execute(query_admin_to_resident, (user_id, target_role))
+                        admin_messages = cursor.fetchall()
+                        
+                        # Combinar mensajes
+                        existing_ids = {m.get('id') for m in messages}
+                        for msg in admin_messages:
+                            if msg.get('id') not in existing_ids:
+                                messages.append(msg)
+                    except Error:
+                        pass  # Continuar con la búsqueda alternativa
+                
+                # SIEMPRE buscar también mensajes del admin/guard en el mismo fraccionamiento y chat_type
+                # IMPORTANTE: Filtrar según el chat_type
+                # - chat_type='administration' -> solo mensajes de admin
+                # - chat_type='security' -> solo mensajes de guard
                 cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (user_id,))
                 resident_info = cursor.fetchone()
                 fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
                 
-                if fraccionamiento_id:
+                # Determinar qué rol debe ver estos mensajes según el chat_type
+                target_role = 'admin' if chat_type == 'administration' else 'guard' if chat_type == 'security' else None
+                
+                if fraccionamiento_id and target_role:
                     query_admin_same_fracc = """
                         SELECT 
                             cm.*,
@@ -2328,11 +2375,11 @@ def get_chat_messages():
                         LEFT JOIN profiles p ON cm.user_id = p.id
                         WHERE cm.chat_type = %s
                           AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
-                          AND p.role IN ('admin', 'guard')
+                          AND p.role = %s
                         ORDER BY cm.created_at ASC
                     """
-                    cursor.execute(query_admin_same_fracc, (chat_type, fraccionamiento_id))
-                else:
+                    cursor.execute(query_admin_same_fracc, (chat_type, fraccionamiento_id, target_role))
+                elif target_role:
                     query_admin_same_fracc = """
                         SELECT 
                             cm.*,
@@ -2341,12 +2388,15 @@ def get_chat_messages():
                         FROM chat_messages cm
                         LEFT JOIN profiles p ON cm.user_id = p.id
                         WHERE cm.chat_type = %s
-                          AND p.role IN ('admin', 'guard')
+                          AND p.role = %s
                         ORDER BY cm.created_at ASC
                     """
-                    cursor.execute(query_admin_same_fracc, (chat_type,))
+                    cursor.execute(query_admin_same_fracc, (chat_type, target_role))
+                else:
+                    # Si no hay target_role, no buscar mensajes de admin/guard
+                    admin_messages = []
                 
-                admin_messages = cursor.fetchall()
+                admin_messages = cursor.fetchall() if target_role else []
                 existing_ids = {m.get('id') for m in messages}
                 for msg in admin_messages:
                     if msg.get('id') not in existing_ids:
