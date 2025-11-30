@@ -160,7 +160,6 @@ export class NotificationsComponent implements OnInit {
     return notificationDate.toLocaleDateString('es-ES');
   }
 
-<<<<<<< HEAD
   deleteAllNotifications(): void {
     if (!confirm('¿Estás seguro de eliminar todas las notificaciones?')) return;
 
@@ -191,9 +190,9 @@ export class NotificationsComponent implements OnInit {
 
   navigateTo(route: string): void {
     this.router.navigate([`/${route}`]);
-=======
+  }
+
   goBack(): void {
     this.router.navigate(['/dashboard']);
->>>>>>> origin/Alan
   }
 }

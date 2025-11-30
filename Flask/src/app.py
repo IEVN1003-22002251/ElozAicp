@@ -23,9 +23,15 @@ load_dotenv(dotenv_path=env_path)
 app = Flask(__name__)
 app.config.from_object(config['development'])
 
-# Configure CORS
+# Configure CORS - Permite todas las peticiones desde el frontend
 cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:4200'])
-CORS(app, resources={r"/api/*": {"origins": cors_origins}})
+# Configuración más permisiva para desarrollo
+CORS(app, 
+     origins=cors_origins,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+     supports_credentials=True,
+     max_age=3600)
 
 # Database connection function
 def get_connection():
@@ -649,7 +655,7 @@ def delete_visitor(visitor_id):
 
 @app.route('/api/registrations', methods=['GET'])
 def get_pending_registrations():
-    """Obtiene todos los registros pendientes (status = 'pending')"""
+    """Obtiene todos los registros (pendientes, aprobados y rechazados)"""
     try:
         conn = get_connection()
         if not conn:
@@ -661,9 +667,9 @@ def get_pending_registrations():
         
         cursor = conn.cursor(dictionary=True)
         
-        # IMPORTANTE: Filtrar solo registros con status = 'pending'
+        # Obtener TODOS los registros para que el frontend los separe por status
         cursor.execute(
-            "SELECT * FROM pending_registrations WHERE status = 'pending' ORDER BY created_at DESC"
+            "SELECT * FROM pending_registrations ORDER BY created_at DESC"
         )
         registrations = cursor.fetchall()
         
@@ -906,33 +912,45 @@ def approve_registration(registration_id):
                 'mensaje': 'Ya existe un usuario con este email'
             }), 400
         
-        # 3. Generar ID para el nuevo usuario (UUID)
-        profile_id = str(uuid.uuid4())
-        
-        # 4. Preparar datos para profiles
+        # 3. Preparar datos para profiles
         password = registration['password']
         
-        # 5. Insertar en profiles
+        # Convertir fraccionamiento_id a INT si es posible (puede ser VARCHAR en pending_registrations)
+        fraccionamiento_id = registration.get('fraccionamiento_id')
+        if fraccionamiento_id:
+            try:
+                # Intentar convertir a int si es un número válido
+                if isinstance(fraccionamiento_id, str) and fraccionamiento_id.isdigit():
+                    fraccionamiento_id = int(fraccionamiento_id)
+                elif isinstance(fraccionamiento_id, (int, float)):
+                    fraccionamiento_id = int(fraccionamiento_id)
+                else:
+                    # Si no es convertible, dejarlo como None
+                    fraccionamiento_id = None
+            except (ValueError, TypeError):
+                fraccionamiento_id = None
+        
+        # 4. Insertar en profiles (sin especificar id, dejar que AUTO_INCREMENT lo genere)
         insert_profile_query = """
             INSERT INTO profiles (
-                id, name, user_name, email, password, role, 
+                name, user_name, email, password, role, 
                 fraccionamiento_id, created_at, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
             )
         """
         
         profile_values = (
-            profile_id,
             registration['full_name'],  # name en profiles = full_name en pending
             registration.get('user_name'),
             registration['email'],
             password,  # Password en texto plano
             registration.get('role', 'resident'),
-            registration.get('fraccionamiento_id')
+            fraccionamiento_id
         )
         
         cursor.execute(insert_profile_query, profile_values)
+        profile_id = cursor.lastrowid  # Obtener el ID generado por AUTO_INCREMENT
         
         # 6. Actualizar status en pending_registrations
         cursor.execute(
@@ -1080,6 +1098,901 @@ def reject_registration(registration_id):
             'exito': False,
             'mensaje': f'Error: {str(e)}'
         }), 500
+
+# =====================================================
+# RESIDENT PREFERENCES ROUTES
+# =====================================================
+
+@app.route('/api/resident-preferences', methods=['GET'])
+def get_resident_preferences():
+    """Obtiene las preferencias de un residente"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'user_id es requerido'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            # Si no hay conexión, devolver valores por defecto
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'data': {
+                    'user_id': int(user_id) if user_id.isdigit() else 0,
+                    'accepts_visitors': False,
+                    'accepts_personnel': True
+                }
+            }), 200
+        
+        cursor = conn.cursor(dictionary=True)
+        preferences = None
+        try:
+            cursor.execute(
+                "SELECT * FROM resident_preferences WHERE user_id = %s",
+                (user_id,)
+            )
+            preferences = cursor.fetchone()
+        except Error as db_error:
+            # Si la tabla no existe o hay error, usar None para devolver valores por defecto después
+            preferences = None
+        finally:
+            # Asegurar que siempre se cierren las conexiones
+            try:
+                cursor.close()
+            except:
+                pass
+            try:
+                conn.close()
+            except:
+                pass
+        
+        if preferences:
+            # Convertir datetime a string
+            if preferences.get('created_at'):
+                preferences['created_at'] = preferences['created_at'].isoformat() if hasattr(preferences['created_at'], 'isoformat') else str(preferences['created_at'])
+            if preferences.get('updated_at'):
+                preferences['updated_at'] = preferences['updated_at'].isoformat() if hasattr(preferences['updated_at'], 'isoformat') else str(preferences['updated_at'])
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'data': preferences
+            }), 200
+        else:
+            # Devolver valores por defecto si no existe el registro
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'data': {
+                    'user_id': int(user_id) if user_id.isdigit() else 0,
+                    'accepts_visitors': False,
+                    'accepts_personnel': True
+                }
+            }), 200
+            
+    except (ValueError, TypeError) as e:
+        # Error al convertir user_id a int, devolver valores por defecto
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': {
+                'user_id': 0,
+                'accepts_visitors': False,
+                'accepts_personnel': True
+            }
+        }), 200
+    except Exception as e:
+        # Para cualquier otro error, devolver valores por defecto en lugar de error 500
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': {
+                'user_id': int(user_id) if user_id and user_id.isdigit() else 0,
+                'accepts_visitors': False,
+                'accepts_personnel': True
+            }
+        }), 200
+
+# =====================================================
+# BANNERS ROUTES
+# =====================================================
+
+@app.route('/api/banners/active', methods=['GET'])
+def get_active_banners():
+    """Obtiene los banners activos"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT * FROM banners WHERE is_active = 1 ORDER BY `order` ASC"
+        )
+        banners = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Convertir datetime a string
+        for banner in banners:
+            if banner.get('created_at'):
+                banner['created_at'] = banner['created_at'].isoformat() if hasattr(banner['created_at'], 'isoformat') else str(banner['created_at'])
+            if banner.get('updated_at'):
+                banner['updated_at'] = banner['updated_at'].isoformat() if hasattr(banner['updated_at'], 'isoformat') else str(banner['updated_at'])
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': banners
+        }), 200
+        
+    except Error as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error en la base de datos: {str(e)}'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+# =====================================================
+# NOTIFICATIONS ROUTES
+# =====================================================
+
+@app.route('/api/notifications', methods=['GET'])
+def get_notifications():
+    """Obtiene las notificaciones de un usuario"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'user_id es requerido'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC",
+                (user_id,)
+            )
+            notifications = cursor.fetchall()
+        except Error as db_error:
+            # Si la tabla no existe, devolver array vacío
+            notifications = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        # Convertir datetime a string y ajustar nombre del campo read
+        for notification in notifications:
+            if notification.get('created_at'):
+                notification['created_at'] = notification['created_at'].isoformat() if hasattr(notification['created_at'], 'isoformat') else str(notification['created_at'])
+            # Convertir el campo `read` a is_read para compatibilidad con el frontend
+            if 'read' in notification:
+                notification['is_read'] = bool(notification['read'])
+                # Mantener ambos campos para compatibilidad
+                if not 'is_read' in notification:
+                    notification['is_read'] = notification['read']
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': notifications,
+            'notifications': notifications  # También en formato notifications para compatibilidad
+        }), 200
+        
+    except Exception as e:
+        # En caso de error, devolver array vacío
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': [],
+            'notifications': []
+        }), 200
+
+@app.route('/api/notifications/<notification_id>/read', methods=['PUT'])
+def mark_notification_as_read(notification_id):
+    """Marca una notificación como leída"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "UPDATE notifications SET `read` = 1 WHERE id = %s",
+                (notification_id,)
+            )
+            conn.commit()
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'mensaje': 'Notificación marcada como leída'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/notifications/mark-all-read', methods=['PUT'])
+def mark_all_notifications_as_read():
+    """Marca todas las notificaciones de un usuario como leídas"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id') if data else None
+        user_id = user_id or request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'user_id es requerido'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "UPDATE notifications SET `read` = 1 WHERE user_id = %s",
+                (user_id,)
+            )
+            conn.commit()
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'mensaje': 'Todas las notificaciones marcadas como leídas'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+# =====================================================
+# INCIDENTS ROUTES
+# =====================================================
+
+@app.route('/api/incidents/stats/by-type', methods=['GET'])
+def get_incidents_by_type():
+    """Obtiene estadísticas de incidentes agrupados por tipo"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener parámetros opcionales
+        fraccionamiento_id = request.args.get('fraccionamiento_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # Construir query
+        query = """
+            SELECT incident_type, COUNT(*) as count 
+            FROM incidents 
+            WHERE 1=1
+        """
+        params = []
+        
+        if fraccionamiento_id:
+            query += " AND fraccionamiento_id = %s"
+            params.append(fraccionamiento_id)
+        
+        if start_date:
+            query += " AND reported_at >= %s"
+            params.append(start_date)
+        
+        if end_date:
+            query += " AND reported_at <= %s"
+            params.append(end_date)
+        
+        query += " GROUP BY incident_type ORDER BY count DESC"
+        
+        try:
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+        except Error as db_error:
+            # Si la tabla no existe, devolver array vacío
+            results = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': results
+        }), 200
+        
+    except Exception as e:
+        # En caso de error, devolver array vacío
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': []
+        }), 200
+
+# =====================================================
+# RESIDENTS ROUTES (Para Chat)
+# =====================================================
+
+@app.route('/api/residents', methods=['GET'])
+def get_residents():
+    """Obtiene la lista de todos los residentes"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener todos los usuarios con rol 'resident'
+        query = """
+            SELECT id, name, user_name, email, role
+            FROM profiles
+            WHERE role = 'resident'
+            ORDER BY name ASC
+        """
+        
+        try:
+            cursor.execute(query)
+            residents = cursor.fetchall()
+            
+            # Convertir IDs a enteros si es necesario
+            for resident in residents:
+                if 'id' in resident and resident['id']:
+                    try:
+                        resident['id'] = int(resident['id'])
+                    except (ValueError, TypeError):
+                        pass
+        except Error as db_error:
+            residents = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': residents
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error al obtener residentes: {str(e)}',
+            'data': []
+        }), 200
+
+# =====================================================
+# CHAT ROUTES
+# =====================================================
+
+@app.route('/api/chat/messages', methods=['POST'])
+def send_chat_message():
+    """Envía un mensaje de chat"""
+    try:
+        data = request.get_json()
+        sender_id = data.get('sender_id')
+        receiver_id = data.get('receiver_id')
+        message_text = data.get('message')
+        chat_type = data.get('chat_type', 'administration')  # Para residentes que usan tabs
+        
+        if not sender_id or not message_text:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'sender_id y message son requeridos'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        try:
+            # Obtener información del sender
+            cursor.execute("SELECT id, role, fraccionamiento_id FROM profiles WHERE id = %s", (sender_id,))
+            sender = cursor.fetchone()
+            
+            if not sender:
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'Usuario remitente no encontrado'
+                }), 404
+            
+            # Determinar si es admin o residente
+            is_admin = sender.get('role') in ['admin', 'guard']
+            
+            # Si es una conversación 1 a 1 (admin-residente o viceversa)
+            if receiver_id:
+                # Verificar que el receiver existe
+                cursor.execute("SELECT id, role, fraccionamiento_id FROM profiles WHERE id = %s", (receiver_id,))
+                receiver = cursor.fetchone()
+                
+                if not receiver:
+                    return jsonify({
+                        'success': False,
+                        'exito': False,
+                        'mensaje': 'Usuario destinatario no encontrado'
+                    }), 404
+                
+                # Intentar insertar con sender_id y receiver_id primero
+                try:
+                    insert_query = """
+                        INSERT INTO chat_messages (sender_id, receiver_id, message, created_at)
+                        VALUES (%s, %s, %s, NOW())
+                    """
+                    cursor.execute(insert_query, (sender_id, receiver_id, message_text))
+                    
+                    # También insertar en estructura antigua para compatibilidad
+                    # Esto asegura que el residente pueda ver el mensaje
+                    try:
+                        insert_old = """
+                            INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
+                            VALUES (%s, %s, %s, %s, NOW())
+                        """
+                        cursor.execute(insert_old, (
+                            sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
+                            'administration',
+                            sender_id,
+                            message_text
+                        ))
+                    except Error:
+                        pass  # Si falla, no es crítico
+                        
+                except Error as e:
+                    # Si las columnas no existen o hay error, usar la estructura antigua
+                    # Guardar con user_id del sender y chat_type 'administration'
+                    insert_query = """
+                        INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """
+                    cursor.execute(insert_query, (
+                        sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
+                        'administration',
+                        sender_id,
+                        message_text
+                    ))
+            else:
+                # Mensaje de residente a un tab específico (para que los admins lo vean)
+                # Guardamos el mensaje con chat_type y user_id del residente
+                # Los admins verán estos mensajes cuando seleccionen a ese residente
+                insert_query = """
+                    INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                """
+                cursor.execute(insert_query, (
+                    sender.get('fraccionamiento_id'),
+                    chat_type or 'administration',
+                    sender_id,
+                    message_text
+                ))
+            
+            conn.commit()
+            message_id = cursor.lastrowid
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': 'Mensaje enviado correctamente',
+                'data': {
+                    'id': message_id,
+                    'sender_id': sender_id,
+                    'receiver_id': receiver_id,
+                    'message': message_text,
+                    'created_at': None  # Se puede obtener de la BD si es necesario
+                }
+            }), 201
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error al enviar mensaje: {str(e)}'
+        }), 500
+
+@app.route('/api/chat/messages', methods=['GET'])
+def get_chat_messages():
+    """Obtiene los mensajes de chat"""
+    try:
+        sender_id = request.args.get('sender_id')
+        receiver_id = request.args.get('receiver_id')
+        chat_type = request.args.get('chat_type')
+        user_id = request.args.get('user_id')  # Para obtener todos los mensajes de un usuario
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        
+        try:
+            messages = []
+            
+            # Si es conversación 1 a 1 (admin-residente)
+            if sender_id and receiver_id:
+                # Primero intentar con estructura nueva (sender_id, receiver_id)
+                try:
+                    query_new = """
+                        SELECT 
+                            cm.*,
+                            s.name as sender_name,
+                            s.user_name as sender_username,
+                            r.name as receiver_name,
+                            r.user_name as receiver_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles s ON cm.sender_id = s.id
+                        LEFT JOIN profiles r ON cm.receiver_id = r.id
+                        WHERE (cm.sender_id = %s AND cm.receiver_id = %s)
+                           OR (cm.sender_id = %s AND cm.receiver_id = %s)
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_new, (sender_id, receiver_id, receiver_id, sender_id))
+                    messages_new = cursor.fetchall()
+                    
+                    if messages_new:
+                        messages = messages_new
+                except Error:
+                    messages_new = []
+                
+                # SIEMPRE buscar también en estructura antigua (user_id, chat_type)
+                # Obtener todos los mensajes del residente (de cualquier chat_type)
+                query_resident = """
+                    SELECT 
+                        cm.*,
+                        p.name as sender_name,
+                        p.user_name as sender_username
+                    FROM chat_messages cm
+                    LEFT JOIN profiles p ON cm.user_id = p.id
+                    WHERE cm.user_id = %s
+                    ORDER BY cm.created_at ASC
+                """
+                cursor.execute(query_resident, (receiver_id,))
+                messages_resident = cursor.fetchall()
+                
+                # Combinar mensajes del residente, evitando duplicados
+                existing_ids = {m.get('id') for m in messages}
+                for msg in messages_resident:
+                    if msg.get('id') not in existing_ids:
+                        messages.append(msg)
+                
+                # También buscar mensajes enviados por el admin relacionados con este residente
+                # Buscar mensajes del admin en el mismo fraccionamiento y chat_type 'administration'
+                # Primero obtener el fraccionamiento_id del residente
+                cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (receiver_id,))
+                resident_info = cursor.fetchone()
+                fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
+                
+                if fraccionamiento_id:
+                    query_admin_sent = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.user_id = %s
+                          AND cm.chat_type = 'administration'
+                          AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_admin_sent, (sender_id, fraccionamiento_id))
+                else:
+                    query_admin_sent = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.user_id = %s
+                          AND cm.chat_type = 'administration'
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_admin_sent, (sender_id,))
+                
+                admin_sent_messages = cursor.fetchall()
+                
+                # Combinar mensajes del admin también
+                existing_ids = {m.get('id') for m in messages}
+                for msg in admin_sent_messages:
+                    if msg.get('id') not in existing_ids:
+                        messages.append(msg)
+                
+                # Ordenar todos los mensajes por fecha después de combinarlos
+                messages.sort(key=lambda x: x.get('created_at') or '1970-01-01 00:00:00')
+            elif chat_type and user_id:
+                # Para residentes que usan tabs
+                # Obtener mensajes del residente
+                query_resident = """
+                    SELECT 
+                        cm.*,
+                        p.name as sender_name,
+                        p.user_name as sender_username
+                    FROM chat_messages cm
+                    LEFT JOIN profiles p ON cm.user_id = p.id
+                    WHERE cm.chat_type = %s
+                      AND cm.user_id = %s
+                    ORDER BY cm.created_at ASC
+                """
+                cursor.execute(query_resident, (chat_type, user_id))
+                messages = cursor.fetchall()
+                
+                # También obtener mensajes del admin/guard dirigidos a este residente
+                # Primero intentar con sender_id/receiver_id
+                try:
+                    query_admin_to_resident = """
+                        SELECT 
+                            cm.*,
+                            s.name as sender_name,
+                            s.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles s ON cm.sender_id = s.id
+                        WHERE cm.receiver_id = %s
+                          AND cm.sender_id IN (SELECT id FROM profiles WHERE role IN ('admin', 'guard'))
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_admin_to_resident, (user_id,))
+                    admin_messages = cursor.fetchall()
+                    
+                    # Combinar mensajes
+                    existing_ids = {m.get('id') for m in messages}
+                    for msg in admin_messages:
+                        if msg.get('id') not in existing_ids:
+                            messages.append(msg)
+                except Error:
+                    pass  # Continuar con la búsqueda alternativa
+                
+                # SIEMPRE buscar también mensajes del admin en el mismo fraccionamiento y chat_type
+                cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (user_id,))
+                resident_info = cursor.fetchone()
+                fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
+                
+                if fraccionamiento_id:
+                    query_admin_same_fracc = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.chat_type = %s
+                          AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
+                          AND p.role IN ('admin', 'guard')
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_admin_same_fracc, (chat_type, fraccionamiento_id))
+                else:
+                    query_admin_same_fracc = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.chat_type = %s
+                          AND p.role IN ('admin', 'guard')
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_admin_same_fracc, (chat_type,))
+                
+                admin_messages = cursor.fetchall()
+                existing_ids = {m.get('id') for m in messages}
+                for msg in admin_messages:
+                    if msg.get('id') not in existing_ids:
+                        messages.append(msg)
+                
+                # Ordenar todos los mensajes por fecha
+                messages.sort(key=lambda x: x.get('created_at') or '1970-01-01 00:00:00')
+            elif user_id:
+                # Obtener todos los mensajes de un usuario (para admin viendo conversaciones)
+                try:
+                    query = """
+                        SELECT 
+                            cm.*,
+                            s.name as sender_name,
+                            s.user_name as sender_username,
+                            r.name as receiver_name,
+                            r.user_name as receiver_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles s ON cm.sender_id = s.id
+                        LEFT JOIN profiles r ON cm.receiver_id = r.id
+                        WHERE cm.sender_id = %s OR cm.receiver_id = %s
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query, (user_id, user_id))
+                    messages = cursor.fetchall()
+                except Error:
+                    # Estructura antigua
+                    query = """
+                        SELECT 
+                            cm.*,
+                            p.name as sender_name,
+                            p.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles p ON cm.user_id = p.id
+                        WHERE cm.user_id = %s
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query, (user_id,))
+                    messages = cursor.fetchall()
+            
+            # Formatear mensajes
+            formatted_messages = []
+            # Determinar el ID del usuario actual que está viendo los mensajes
+            current_user_id = None
+            if sender_id and str(sender_id).isdigit():
+                current_user_id = int(sender_id)
+            elif user_id and str(user_id).isdigit():
+                current_user_id = int(user_id)
+            
+            for msg in messages:
+                # Obtener el ID del remitente del mensaje
+                msg_sender_id = msg.get('sender_id') or msg.get('user_id')
+                if msg_sender_id:
+                    try:
+                        msg_sender_id = int(msg_sender_id)
+                    except (ValueError, TypeError):
+                        msg_sender_id = None
+                
+                # Determinar si el mensaje fue enviado por el usuario actual
+                is_sent = False
+                if current_user_id and msg_sender_id:
+                    try:
+                        is_sent = int(msg_sender_id) == int(current_user_id)
+                    except (ValueError, TypeError):
+                        is_sent = False
+                
+                # Formatear fecha
+                created_at = msg.get('created_at')
+                time_str = '00:00'
+                if created_at:
+                    try:
+                        if hasattr(created_at, 'strftime'):
+                            time_str = created_at.strftime('%H:%M')
+                        elif isinstance(created_at, str):
+                            # Intentar parsear string de fecha
+                            from datetime import datetime
+                            dt = datetime.strptime(created_at[:19], '%Y-%m-%d %H:%M:%S')
+                            time_str = dt.strftime('%H:%M')
+                        else:
+                            time_str = str(created_at)[:5] if len(str(created_at)) >= 5 else '00:00'
+                    except:
+                        time_str = '00:00'
+                
+                formatted_messages.append({
+                    'id': msg.get('id'),
+                    'text': msg.get('message', ''),
+                    'time': time_str,
+                    'sent': is_sent,
+                    'sender_name': msg.get('sender_name') or msg.get('sender_username', 'Usuario'),
+                    'created_at': created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else str(created_at) if created_at else None
+                })
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'data': formatted_messages
+            }), 200
+            
+        except Error as db_error:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}',
+                'data': []
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error al obtener mensajes: {str(e)}',
+            'data': []
+        }), 200
 
 # =====================================================
 # ERROR HANDLERS

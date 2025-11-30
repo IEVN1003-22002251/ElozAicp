@@ -12,9 +12,10 @@ class RegistrationService:
         self.supabase = supabase_client
     
     def get_all_pending_registrations(self) -> Dict:
-        """Get all pending registrations"""
+        """Get all registrations (pending, approved and rejected)"""
         try:
-            response = self.supabase.table('pending_registrations').select('*').eq('status', 'pending').execute()
+            # Obtener TODOS los registros para que el frontend los separe por status
+            response = self.supabase.table('pending_registrations').select('*').order('created_at', desc=True).execute()
             return {'data': response.data}
         except Exception as e:
             return {'error': str(e)}

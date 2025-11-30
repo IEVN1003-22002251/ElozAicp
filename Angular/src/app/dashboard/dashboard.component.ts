@@ -63,6 +63,11 @@ import { AuthService } from '../services/auth.service';
             <h3 class="card-title">Recados y Avisos</h3>
             <p class="card-subtitle">Gestionar recados para residentes</p>
           </div>
+          
+          <div class="action-card" (click)="navigateTo('chat')">
+            <h3 class="card-title">Chat</h3>
+            <p class="card-subtitle">Comunicarse con residentes</p>
+          </div>
         </div>
       </main>
     </div>
