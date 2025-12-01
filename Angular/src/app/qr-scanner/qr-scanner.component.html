@@ -1,0 +1,257 @@
+<div class="scanner-container">
+  <!-- Header -->
+  <header class="scanner-header">
+    <h1 class="scanner-title">Escanear Código QR</h1>
+    <button class="btn-back-scanner" (click)="goBack()">← Volver</button>
+  </header>
+
+  <!-- Scanner Section -->
+  <div class="scanner-section">
+    <div class="scanner-video-container">
+      <div #scannerContainer id="qr-reader" class="qr-reader-container" [class.hidden]="(!isScanning && !loading) || scanResult"></div>
+      <div *ngIf="!isScanning && !loading && !scanResult" class="scanner-placeholder">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="5" height="5"></rect>
+          <rect x="16" y="3" width="5" height="5"></rect>
+          <rect x="3" y="16" width="5" height="5"></rect>
+          <path d="M21 16h-3"></path>
+          <path d="M9 21h3"></path>
+          <path d="M13 21h3"></path>
+          <path d="M21 12v-1"></path>
+          <path d="M12 21v-3"></path>
+        </svg>
+        <p>Presiona el botón para iniciar el escáner</p>
+      </div>
+      <div *ngIf="error" class="scanner-error">
+        <p>{{ error }}</p>
+      </div>
+    </div>
+
+    <div class="scanner-controls">
+      <button 
+        *ngIf="!isScanning" 
+        class="btn-start-scan" 
+        (click)="startScanning()"
+        [disabled]="loading">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Iniciar Escáner
+      </button>
+      <button 
+        *ngIf="isScanning" 
+        class="btn-stop-scan" 
+        (click)="stopScanning()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="6" y="6" width="12" height="12"></rect>
+        </svg>
+        Detener Escáner
+      </button>
+    </div>
+
+    <!-- Manual QR Input -->
+    <div class="manual-input-section">
+      <p class="manual-input-label">O ingresa el código QR manualmente:</p>
+      <div class="input-group">
+        <input 
+          type="text" 
+          class="qr-input" 
+          placeholder="Pega aquí el código QR o la URL del QR"
+          [(ngModel)]="manualQRInput"
+          (keyup.enter)="processManualInput()"
+          #qrInput>
+        <button class="btn-process-input" (click)="processManualInput()">
+          Procesar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan Result -->
+  <div *ngIf="scanResult" class="scan-result">
+    <div class="result-header">
+      <h2 class="result-title">Código QR Escaneado</h2>
+      <button class="btn-close-result" (click)="clearResult()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Visitor QR Result -->
+    <div *ngIf="scanResult.type === 'visitor' || scanResult.type === 'one-time'" class="result-content visitor-result">
+      <div class="result-badge visitor-badge">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        {{ scanResult.type === 'one-time' ? 'Visitante (Solo una vez)' : 'Visitante' }}
+      </div>
+      <div class="result-info">
+        <div class="info-row">
+          <span class="info-label">Nombre del Visitante:</span>
+          <span class="info-value">{{ scanResult.visitor_name || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="isAdmin && (scanResult.resident_name || scanResult.resident_address)">
+          <span class="info-label">Residente:</span>
+          <span class="info-value">{{ scanResult.resident_name || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="isAdmin && scanResult.resident_address">
+          <span class="info-label">Domicilio:</span>
+          <span class="info-value">{{ scanResult.resident_address || 'No disponible' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_street && scanResult.resident_house_number">
+          <span class="info-label">Calle y Número:</span>
+          <span class="info-value">{{ scanResult.resident_street }}, {{ scanResult.resident_house_number }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ID del Visitante:</span>
+          <span class="info-value">{{ scanResult.visitor_id || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.timestamp">
+          <span class="info-label">Fecha de Registro:</span>
+          <span class="info-value">{{ formatDate(scanResult.timestamp) }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.status">
+          <span class="info-label">Estado Actual:</span>
+          <span class="info-value status-badge-display" [class]="'status-' + scanResult.status">
+            {{ getStatusLabel(scanResult.status) }}
+          </span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.type === 'one-time' && scanResult.expires_at">
+          <span class="info-label">Expira:</span>
+          <span class="info-value" [class.expired]="isQRExpired(scanResult.expires_at)">
+            {{ formatExpirationDate(scanResult.expires_at) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resident QR Result -->
+    <div *ngIf="scanResult.type === 'resident'" class="result-content resident-result">
+      <div class="result-badge resident-badge">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        Residente
+      </div>
+      <div class="result-info">
+        <div class="info-row">
+          <span class="info-label">Nombre:</span>
+          <span class="info-value">{{ scanResult.name || scanResult.user_name || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.user_name && scanResult.user_name !== scanResult.name">
+          <span class="info-label">Usuario:</span>
+          <span class="info-value">{{ scanResult.user_name }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.fraccionamiento_name">
+          <span class="info-label">Fraccionamiento:</span>
+          <span class="info-value">{{ scanResult.fraccionamiento_name }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_address">
+          <span class="info-label">Dirección:</span>
+          <span class="info-value">{{ scanResult.resident_address }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_street && scanResult.house_number">
+          <span class="info-label">Calle y Número:</span>
+          <span class="info-value">{{ scanResult.resident_street }}, {{ scanResult.house_number }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.house_number && !scanResult.resident_street">
+          <span class="info-label">Número de Casa:</span>
+          <span class="info-value">{{ scanResult.house_number }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_phone">
+          <span class="info-label">Teléfono:</span>
+          <span class="info-value">{{ scanResult.resident_phone }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_email">
+          <span class="info-label">Email:</span>
+          <span class="info-value">{{ scanResult.resident_email }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ID de Usuario:</span>
+          <span class="info-value">{{ scanResult.user_id || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.timestamp">
+          <span class="info-label">Fecha:</span>
+          <span class="info-value">{{ formatDate(scanResult.timestamp) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event QR Result -->
+    <div *ngIf="scanResult.type === 'event'" class="result-content event-result">
+      <div class="result-badge event-badge">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        Evento
+      </div>
+      <div class="result-info">
+        <div class="info-row">
+          <span class="info-label">Nombre del Evento:</span>
+          <span class="info-value">{{ scanResult.event_name || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.event_date">
+          <span class="info-label">Fecha:</span>
+          <span class="info-value">{{ formatEventDate(scanResult.event_date) }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.event_time">
+          <span class="info-label">Hora:</span>
+          <span class="info-value">{{ formatEventTime(scanResult.event_time) }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.number_of_guests">
+          <span class="info-label">Número de Invitados:</span>
+          <span class="info-value">{{ scanResult.number_of_guests }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Lugar:</span>
+          <span class="info-value">
+            <span *ngIf="scanResult.event_location === 'domicilio' && scanResult.resident_address">
+              {{ scanResult.resident_address }}
+            </span>
+            <span *ngIf="scanResult.event_location === 'domicilio' && !scanResult.resident_address">
+              {{ getLocationLabel(scanResult.event_location) }}
+            </span>
+            <span *ngIf="scanResult.event_location && scanResult.event_location !== 'domicilio'">
+              {{ getLocationLabel(scanResult.event_location) }}
+            </span>
+            <span *ngIf="!scanResult.event_location">No especificado</span>
+          </span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.resident_name">
+          <span class="info-label">Anfitrión:</span>
+          <span class="info-value">{{ scanResult.resident_name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">ID del Evento:</span>
+          <span class="info-value">{{ scanResult.visitor_id || scanResult.event_id || 'N/A' }}</span>
+        </div>
+        <div class="info-row" *ngIf="scanResult.timestamp">
+          <span class="info-label">Fecha de Registro:</span>
+          <span class="info-value">{{ formatDate(scanResult.timestamp) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invalid QR -->
+    <div *ngIf="scanResult.type !== 'visitor' && scanResult.type !== 'resident' && scanResult.type !== 'event' && scanResult.type !== 'one-time'" class="result-content invalid-result">
+      <div class="result-badge invalid-badge">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        Código QR Inválido
+      </div>
+      <p class="invalid-message">Este código QR no es válido para el sistema AICP.</p>
+    </div>
+  </div>
+</div>
+
+

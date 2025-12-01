@@ -1,0 +1,146 @@
+.qr-access-container {
+  min-height: 100vh;
+  background-color: #1a1a2e;
+}
+
+/* Header */
+.qr-header {
+  background-color: #2a2a2a;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-bottom: 0;
+}
+
+.btn-back-qr {
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-back-qr:hover {
+  background-color: #c82333;
+}
+
+.qr-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* Bloque de información */
+.info-card {
+  background-color: #16213e;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 40px;
+  margin-bottom: 24px;
+}
+
+.info-text {
+  font-size: 16px;
+  color: #ffffff;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Tarjeta con QR Code */
+.qr-card {
+  background-color: #16213e;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 0 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.qr-code-wrapper {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-code-image {
+  width: 250px;
+  height: 250px;
+  max-width: 100%;
+  height: auto;
+}
+
+.resident-info {
+  text-align: center;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.resident-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.resident-address {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.scan-instruction {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .qr-header {
+    padding: 16px 20px;
+  }
+
+  .info-card,
+  .qr-card {
+    margin: 20px;
+  }
+
+  .qr-title {
+    font-size: 20px;
+  }
+
+  .qr-card-title {
+    font-size: 16px;
+  }
+
+  .qr-code-image {
+    width: 200px;
+    height: 200px;
+  }
+
+  .resident-name {
+    font-size: 18px;
+  }
+}
+
+

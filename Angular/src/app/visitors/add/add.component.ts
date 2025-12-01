@@ -345,7 +345,7 @@ export class AddComponent implements OnInit {
           if (this.createdEvent?.id) {
             this.generateEventQR(this.createdEvent.id);
           } else {
-            this.router.navigate([this.getRedirectRoute()]);
+          this.router.navigate([this.getRedirectRoute()]);
           }
         } else {
           this.error = response.mensaje || 'Error al registrar evento';

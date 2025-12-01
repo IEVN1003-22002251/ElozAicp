@@ -9,53 +9,8 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-edit',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="container">
-      <h1>Editar Visitante</h1>
-      
-      <div *ngIf="loading" class="loading">Cargando...</div>
-      
-      <form *ngIf="!loading" (ngSubmit)="onSubmit()" #visitorForm="ngForm">
-        <div class="form-group">
-          <label>Nombre</label>
-          <input type="text" class="form-control" [(ngModel)]="visitor.name" name="name" required />
-        </div>
-        
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" class="form-control" [(ngModel)]="visitor.email" name="email" />
-        </div>
-        
-        <div class="form-group">
-          <label>Teléfono</label>
-          <input type="text" class="form-control" [(ngModel)]="visitor.phone" name="phone" />
-        </div>
-        
-        <div *ngIf="error" class="error">{{ error }}</div>
-        
-        <button type="submit" class="btn btn-primary" [disabled]="saving || !visitorForm.valid">
-          {{ saving ? 'Guardando...' : 'Guardar' }}
-        </button>
-        <button type="button" class="btn btn-secondary" (click)="cancel()">Cancelar</button>
-      </form>
-    </div>
-  `,
-  styles: [`
-    .container {
-      padding: 20px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    
-    .form-group {
-      margin-bottom: 20px;
-    }
-    
-    .error {
-      color: #dc3545;
-      margin-bottom: 20px;
-    }
-  `]
+  templateUrl: './edit.component.html',
+  styleUrls: ['./edit.component.css']
 })
 export class EditComponent implements OnInit {
   visitor: any = {};
