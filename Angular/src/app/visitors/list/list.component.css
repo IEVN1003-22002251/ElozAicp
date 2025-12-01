@@ -2,30 +2,6 @@
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 100vh;
-  background-color: #1a1a1a;
-}
-
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.header-section h1 {
-  color: #ffffff;
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.header-buttons {
-  display: flex;
-  gap: 12px;
-  align-items: center;
 }
 
 .visitors-list {
@@ -39,20 +15,6 @@
   background-color: #2a2a2a;
   padding: 20px;
   border-radius: 8px;
-  color: #ffffff;
-}
-
-.visitor-card h3 {
-  color: #ffffff;
-  margin: 0 0 12px 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.visitor-card p {
-  color: rgba(255, 255, 255, 0.8);
-  margin: 8px 0;
-  font-size: 14px;
 }
 
 .visitor-card .address {
@@ -63,15 +25,31 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.visitor-card .address.no-address {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+}
+
 .loading, .error, .no-data {
   text-align: center;
   padding: 20px;
   margin-top: 20px;
-  color: rgba(255, 255, 255, 0.7);
 }
 
 .error {
   color: #dc3545;
+}
+
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 12px;
 }
 
 .btn {
@@ -125,21 +103,171 @@
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-qr {
+  background-color: #20b2aa;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-qr:hover:not(:disabled) {
+  background-color: #1a9d96;
+}
+
+.btn-qr:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.qr-modal-content {
+  background-color: #2a2a2a;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.qr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.qr-modal-header h2 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close-modal:hover {
+  opacity: 0.7;
+}
+
+.qr-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-code-display {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.qr-image {
+  width: 250px;
+  height: 250px;
+  max-width: 100%;
+  height: auto;
+}
+
+.qr-instruction {
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.qr-share-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.btn-share-qr, .btn-download-qr {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-share-qr {
+  background-color: #007bff;
+  color: #ffffff;
+}
+
+.btn-share-qr:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-download-qr {
+  background-color: #20b2aa;
+  color: #ffffff;
+}
+
+.btn-download-qr:hover {
+  background-color: #1a9d96;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(32, 178, 170, 0.3);
+}
+
+.btn-share-qr svg, .btn-download-qr svg {
+  width: 18px;
+  height: 18px;
+}
+
 @media (max-width: 768px) {
   .header-section {
     flex-direction: column;
     align-items: flex-start;
   }
-
+  
   .header-buttons {
     width: 100%;
     flex-direction: column;
   }
-
+  
   .header-buttons .btn {
     width: 100%;
     justify-content: center;
   }
 }
-
-

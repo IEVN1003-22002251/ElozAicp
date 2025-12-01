@@ -1,0 +1,412 @@
+<div class="history-container">
+  <!-- Header -->
+  <header class="history-header">
+    <h1 class="history-title">Historial</h1>
+    <div class="header-actions">
+      <button *ngIf="isAdmin" class="btn-add-visitor" (click)="goToAddVisitor()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Agregar Visitante
+      </button>
+      <button class="btn-calendar" (click)="openDatePicker()" title="Filtrar por fecha">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </button>
+      <button class="btn-back-history" (click)="goBack()">← Volver</button>
+    </div>
+  </header>
+
+  <!-- Summary Section -->
+  <div class="summary-section">
+    <p class="summary-label">Registros completados</p>
+    <p class="summary-count">{{ completedRecords }}</p>
+  </div>
+
+  <!-- Filter Buttons -->
+  <div class="filter-buttons">
+    <button 
+      class="filter-btn" 
+      [class.active]="selectedFilter === 'all'"
+      (click)="setFilter('all')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+      <span>Todos</span>
+    </button>
+    
+    <button 
+      class="filter-btn filter-visitors" 
+      [class.active]="selectedFilter === 'visitors'"
+      (click)="setFilter('visitors')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span>Visitantes</span>
+    </button>
+    
+    <button 
+      class="filter-btn filter-providers" 
+      [class.active]="selectedFilter === 'providers'"
+      (click)="setFilter('providers')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+      </svg>
+      <span>Proveedores</span>
+    </button>
+
+    <button 
+      class="filter-btn filter-events" 
+      [class.active]="selectedFilter === 'events'"
+      (click)="setFilter('events')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      <span>Eventos</span>
+    </button>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="content-area">
+    <div *ngIf="filteredRecords.length === 0 && !loading" class="empty-state">
+      <div class="empty-icon">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </div>
+      <p class="empty-title">Sin registros</p>
+      <p class="empty-message">{{ getEmptyMessage() }}</p>
+    </div>
+
+    <div *ngIf="filteredRecords.length > 0" class="records-list">
+      <div *ngFor="let record of filteredRecords" class="record-item">
+        <div class="record-header">
+          <div class="record-type-badge" [class]="'badge-' + record.type">
+            <svg *ngIf="record.type === 'visitors'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <svg *ngIf="record.type === 'providers'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            <svg *ngIf="record.type === 'events'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>{{ getTypeLabel(record.type) }}</span>
+          </div>
+          <span class="record-date">{{ formatDate(record.created_at) }}</span>
+        </div>
+        <h3 class="record-name">{{ record.name }}</h3>
+        <div class="record-details">
+          <p *ngIf="record.email" class="record-info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            {{ record.email }}
+          </p>
+          <p *ngIf="record.phone" class="record-info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            {{ record.phone }}
+          </p>
+          <p *ngIf="isAdmin && record.address" class="record-info record-address">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Domicilio: {{ record.address }}
+          </p>
+        </div>
+        <div class="record-status" [class.with-button]="(isAdmin && canChangeStatus(record.status)) || (!isAdmin && record.type === 'visitors' && record.originalType === 'visitor') || record.type === 'events' || (!isAdmin && record.type === 'providers')">
+          <span class="status-badge" [class]="'status-' + record.status" *ngIf="isAdmin">
+            {{ getStatusLabel(record.status) }}
+          </span>
+          <div class="status-actions">
+            <button 
+              *ngIf="isAdmin && canChangeStatus(record.status)" 
+              class="btn-status-change"
+              [class]="'btn-' + getNextStatus(record.status)"
+              (click)="changeStatus(record)"
+              [disabled]="record.updating">
+              {{ getStatusButtonText(record.status) }}
+            </button>
+            <div *ngIf="!isAdmin && record.type === 'visitors' && (record.originalType === 'visitor' || record.originalType === 'one-time')" class="resident-visitor-actions">
+              <span class="status-badge" [class]="'status-' + record.status">
+                {{ getStatusLabel(record.status) }}
+              </span>
+              <button 
+                class="btn-view-qr"
+                (click)="viewVisitorQR(record)"
+                [disabled]="record.loadingQR">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="5" height="5"></rect>
+                  <rect x="16" y="3" width="5" height="5"></rect>
+                  <rect x="3" y="16" width="5" height="5"></rect>
+                  <path d="M21 16h-3"></path>
+                  <path d="M9 21h3"></path>
+                  <path d="M13 21h3"></path>
+                  <path d="M21 12v-1"></path>
+                  <path d="M12 21v-3"></path>
+                </svg>
+                Ver QR
+              </button>
+            </div>
+            <div *ngIf="!isAdmin && record.type === 'providers'" class="resident-provider-status">
+              <span class="status-badge" [class]="'status-' + record.status">
+                {{ getStatusLabel(record.status) }}
+              </span>
+            </div>
+            <div *ngIf="record.type === 'events'" class="event-actions">
+              <button 
+                *ngIf="canEditEvent(record)"
+                class="btn-edit-event"
+                (click)="openEditEventModal(record)"
+                [disabled]="record.editing">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Editar
+              </button>
+              <button 
+                class="btn-view-qr btn-view-qr-event"
+                (click)="viewEventQR(record)"
+                [disabled]="record.loadingQR">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="5" height="5"></rect>
+                  <rect x="16" y="3" width="5" height="5"></rect>
+                  <rect x="3" y="16" width="5" height="5"></rect>
+                  <path d="M21 16h-3"></path>
+                  <path d="M9 21h3"></path>
+                  <path d="M13 21h3"></path>
+                  <path d="M21 12v-1"></path>
+                  <path d="M12 21v-3"></path>
+                </svg>
+                Ver QR
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div *ngIf="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando registros...</p>
+    </div>
+  </div>
+  
+  <!-- Modal para editar evento -->
+  <div *ngIf="showEditEventModal" class="edit-modal-overlay" (click)="closeEditEventModal()">
+    <div class="edit-modal-content" (click)="$event.stopPropagation()">
+      <div class="edit-modal-header">
+        <h2>Editar Evento</h2>
+        <button class="btn-close-modal" (click)="closeEditEventModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="edit-modal-body">
+        <div *ngIf="editingEvent" class="edit-form">
+          <div class="form-group">
+            <label class="form-label">Nombre del Evento *</label>
+            <input
+              type="text"
+              class="form-input"
+              [(ngModel)]="editingEvent.name"
+              placeholder="Nombre del evento"
+              [disabled]="savingEvent">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Fecha del Evento</label>
+            <input
+              type="date"
+              class="form-input"
+              [(ngModel)]="editingEvent.eventDate"
+              [disabled]="savingEvent">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Hora del Evento</label>
+            <input
+              type="time"
+              class="form-input"
+              [(ngModel)]="editingEvent.eventTime"
+              [disabled]="savingEvent">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Número de Invitados</label>
+            <input
+              type="number"
+              class="form-input"
+              [(ngModel)]="editingEvent.numberOfGuests"
+              placeholder="Número de invitados"
+              min="1"
+              [disabled]="savingEvent">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Lugar</label>
+            <select
+              class="form-input form-select"
+              [(ngModel)]="editingEvent.eventLocation"
+              [disabled]="savingEvent">
+              <option value="">Seleccionar lugar</option>
+              <option value="domicilio">Domicilio</option>
+              <option value="casa_club">Casa club</option>
+              <option value="lago">Lago</option>
+              <option value="kiosco">Kiosco</option>
+            </select>
+          </div>
+          
+          <div *ngIf="editEventError" class="error-message">
+            {{ editEventError }}
+          </div>
+          
+          <div class="edit-modal-actions">
+            <button 
+              class="btn-cancel-edit"
+              (click)="closeEditEventModal()"
+              [disabled]="savingEvent">
+              Cancelar
+            </button>
+            <button 
+              class="btn-save-edit"
+              (click)="saveEventChanges()"
+              [disabled]="savingEvent || !editingEvent.name">
+              <span *ngIf="!savingEvent">Guardar Cambios</span>
+              <span *ngIf="savingEvent">Guardando...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para mostrar QR -->
+  <div *ngIf="showQRModal" class="qr-modal-overlay" (click)="closeQRModal()">
+    <div class="qr-modal-content" (click)="$event.stopPropagation()">
+      <div class="qr-modal-header">
+        <h2>Código QR - {{ selectedVisitorForQR?.name || selectedEventForQR?.name }}</h2>
+        <button class="btn-close-modal" (click)="closeQRModal()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="qr-modal-body">
+        <div *ngIf="selectedVisitorQR || selectedEventQR" class="qr-code-display">
+          <img [src]="selectedVisitorQR || selectedEventQR" alt="QR Code" class="qr-image" #qrImage />
+        </div>
+        <div *ngIf="!selectedVisitorQR && !selectedEventQR && !loadingQR && selectedVisitorForQR" class="qr-generate-message">
+          <p>No se ha generado un código QR para este visitante.</p>
+          <button class="btn-generate-qr" (click)="generateQRForVisitor()">
+            Generar Código QR
+          </button>
+        </div>
+        <div *ngIf="!selectedVisitorQR && !selectedEventQR && !loadingQR && selectedEventForQR" class="qr-generate-message">
+          <p>No se ha generado un código QR para este evento.</p>
+          <button class="btn-generate-qr" (click)="generateQRForEvent()">
+            Generar Código QR
+          </button>
+        </div>
+        <div *ngIf="loadingQR" class="qr-loading">
+          <div class="loading-spinner"></div>
+          <p>Generando código QR...</p>
+        </div>
+        <p *ngIf="selectedVisitorQR" class="qr-instruction">Escanea este código para validar el acceso del visitante</p>
+        <p *ngIf="selectedEventQR" class="qr-instruction">Comparte este código con los invitados del evento</p>
+        
+        <!-- Información General del Evento (para compartir con invitados) -->
+        <div *ngIf="selectedEventForQR && eventQRData" class="qr-event-summary">
+          <h3 class="qr-summary-title">Información del Evento</h3>
+          <div class="qr-summary-content">
+            <p class="qr-summary-item" *ngIf="eventQRData.event_name">
+              <strong>Evento:</strong> {{ eventQRData.event_name }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.event_date">
+              <strong>Fecha:</strong> {{ formatEventDate(eventQRData.event_date) }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.event_time">
+              <strong>Hora:</strong> {{ formatEventTime(eventQRData.event_time) }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.number_of_guests">
+              <strong>Invitados esperados:</strong> {{ eventQRData.number_of_guests }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.resident_name">
+              <strong>Anfitrión:</strong> {{ eventQRData.resident_name }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.event_location === 'domicilio' && eventQRData.resident_address">
+              <strong>Lugar:</strong> {{ eventQRData.resident_address }}
+            </p>
+            <p class="qr-summary-item" *ngIf="eventQRData.event_location && eventQRData.event_location !== 'domicilio'">
+              <strong>Lugar:</strong> {{ getLocationLabel(eventQRData.event_location) }}
+            </p>
+            <p class="qr-summary-item" *ngIf="!eventQRData.event_location">
+              <strong>Lugar:</strong> No especificado
+            </p>
+          </div>
+        </div>
+        
+        <!-- Información oculta del QR (solo visible para admin) -->
+        <div *ngIf="selectedVisitorQR && isAdmin && qrDecodedInfo" class="qr-hidden-info">
+          <h3 class="qr-info-title">Información del QR (Solo Admin)</h3>
+          <div class="qr-info-details">
+            <p><strong>Visitante:</strong> {{ qrDecodedInfo.visitor_name }}</p>
+            <p><strong>Residente:</strong> {{ qrDecodedInfo.resident_name }}</p>
+            <p><strong>Domicilio:</strong> {{ qrDecodedInfo.resident_address || 'No disponible' }}</p>
+          </div>
+        </div>
+        
+        <div *ngIf="selectedVisitorQR || selectedEventQR" class="qr-share-actions">
+          <button class="btn-share-qr" (click)="shareQR()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            Compartir QR
+          </button>
+          <button class="btn-download-qr" (click)="downloadQR()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Descargar QR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

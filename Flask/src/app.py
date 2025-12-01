@@ -743,22 +743,119 @@ def decode_visitor_qr():
         if not qr_data_string:
             return jsonify({'mensaje': 'Datos del QR no proporcionados', 'exito': False}), 400
         
-        # Decodificar el JSON del QR (formato simplificado: {'t': 'visitor', 'id': 123})
+        # Decodificar el JSON del QR
+        # Soporta dos formatos:
+        # 1. Formato simplificado: {'t': 'visitor', 'id': 123}
+        # 2. Formato completo: {'type': 'resident', 'user_id': 123, ...}
         try:
             qr_data = json.loads(qr_data_string)
         except json.JSONDecodeError:
             return jsonify({'mensaje': 'Formato de QR inválido', 'exito': False}), 400
         
-        # Obtener el ID del visitante del QR simplificado
-        visitor_id = qr_data.get('id')
-        qr_type = qr_data.get('t')  # 't' es el tipo abreviado
+        # Obtener el ID y tipo del QR (soporta ambos formatos)
+        visitor_id = qr_data.get('id') or qr_data.get('user_id')
+        qr_type = qr_data.get('t') or qr_data.get('type')  # Soporta 't' (abreviado) y 'type' (completo)
         
         if not visitor_id:
-            return jsonify({'mensaje': 'ID de visitante no encontrado en el QR', 'exito': False}), 400
+            return jsonify({'mensaje': 'ID no encontrado en el QR: falta información', 'exito': False}), 400
         
-        # Verificar que sea un QR válido (visitante, one-time o evento)
-        if qr_type not in ['visitor', 'one-time', 'event']:
-            return jsonify({'mensaje': 'Este código QR no es válido para el sistema', 'exito': False}), 400
+        # Verificar que sea un QR válido (visitante, one-time, evento o residente)
+        valid_types = ['visitor', 'one-time', 'event', 'resident']
+        if qr_type not in valid_types:
+            return jsonify({'mensaje': f'Código QR inválido: tipo "{qr_type}" no reconocido. Tipos válidos: {", ".join(valid_types)}', 'exito': False}), 400
+        
+        # Si es un QR de residente, buscar en la tabla profiles
+        if qr_type == 'resident':
+            conn = get_connection()
+            if not conn:
+                return jsonify({'mensaje': 'Error de conexión a la base de datos', 'exito': False}), 500
+            
+            cursor = conn.cursor(dictionary=True)
+            
+            # Obtener información del residente desde profiles
+            # También intentar obtener dirección desde pending_registrations si está disponible
+            query = """
+                SELECT 
+                    p.*,
+                    f.name as fraccionamiento_name
+                FROM profiles p
+                LEFT JOIN fraccionamientos f ON p.fraccionamiento_id = f.id
+                WHERE p.id = %s
+            """
+            cursor.execute(query, (visitor_id,))
+            profile = cursor.fetchone()
+            
+            if not profile:
+                cursor.close()
+                conn.close()
+                return jsonify({'mensaje': 'Residente no encontrado', 'exito': False}), 404
+            
+            # Intentar obtener dirección desde pending_registrations o usar campos del profile
+            resident_address = None
+            resident_street = None
+            resident_house_number = None
+            
+            # Primero intentar obtener desde pending_registrations si hay email
+            if profile.get('email'):
+                try:
+                    cursor.execute(
+                        "SELECT street, house_number FROM pending_registrations WHERE email = %s AND status = 'approved' ORDER BY created_at DESC LIMIT 1",
+                        (profile['email'],)
+                    )
+                    pending_reg = cursor.fetchone()
+                    
+                    if not pending_reg:
+                        cursor.execute(
+                            "SELECT street, house_number FROM pending_registrations WHERE email = %s ORDER BY created_at DESC LIMIT 1",
+                            (profile['email'],)
+                        )
+                        pending_reg = cursor.fetchone()
+                    
+                    if pending_reg:
+                        resident_street = pending_reg.get('street')
+                        resident_house_number = pending_reg.get('house_number')
+                except Exception as e:
+                    print(f"Error obteniendo dirección del residente desde pending_registrations: {str(e)}")
+            
+            # Si no se encontró en pending_registrations, usar los campos directos del profile
+            if not resident_street and not resident_house_number:
+                resident_street = profile.get('street')
+                resident_house_number = profile.get('house_number')
+            
+            # Construir la dirección completa
+            if resident_street or resident_house_number:
+                address_parts = []
+                if resident_street:
+                    address_parts.append(resident_street)
+                if resident_house_number:
+                    address_parts.append(resident_house_number)
+                resident_address = ', '.join(address_parts) if address_parts else None
+            
+            cursor.close()
+            conn.close()
+            
+            # Retornar información completa del residente
+            return jsonify({
+                'mensaje': 'QR de residente decodificado correctamente',
+                'qr_data': qr_data,
+                'visitor_info': {
+                    'visitor_id': profile['id'],
+                    'visitor_name': profile.get('name') or profile.get('user_name') or '',
+                    'visitor_type': 'resident',
+                    'resident_name': profile.get('name') or profile.get('user_name') or '',
+                    'resident_user_name': profile.get('user_name') or '',
+                    'resident_email': profile.get('email') or '',
+                    'resident_phone': profile.get('phone') or '',
+                    'resident_address': resident_address or '',
+                    'resident_street': resident_street or profile.get('street') or '',
+                    'resident_house_number': resident_house_number or profile.get('house_number') or '',
+                    'fraccionamiento_id': profile.get('fraccionamiento_id') or '',
+                    'fraccionamiento_name': profile.get('fraccionamiento_name') or '',
+                    'role': profile.get('role') or 'resident',
+                    'timestamp': profile.get('created_at').isoformat() if profile.get('created_at') and hasattr(profile.get('created_at'), 'isoformat') else (profile.get('created_at') if profile.get('created_at') else '')
+                },
+                'exito': True
+            }), 200
         
         # Obtener información completa del visitante/evento desde la base de datos
         conn = get_connection()

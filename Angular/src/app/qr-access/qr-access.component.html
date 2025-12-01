@@ -1,0 +1,35 @@
+<div class="qr-access-container">
+  <!-- Header con botón de regreso -->
+  <header class="qr-header">
+    <h1 class="qr-title">Registro Código QR</h1>
+    <button class="btn-back-qr" (click)="goBack()">← Volver</button>
+  </header>
+
+  <!-- Bloque de información -->
+  <div class="info-card">
+    <p class="info-text">
+      Este es tu código QR permanente como residente. No expira y podrás usarlo para entrar al fraccionamiento.
+    </p>
+  </div>
+
+  <!-- Tarjeta con QR Code -->
+  <div class="qr-card">
+    <h2 class="qr-card-title">Código QR Permanente del Residente</h2>
+    
+    <div class="qr-code-wrapper">
+      <img [src]="qrCodeUrl" alt="QR Code" class="qr-code-image" />
+    </div>
+
+    <div class="resident-info">
+      <p class="resident-name">{{ profile?.user_name || profile?.name || 'Usuario' }}</p>
+      <p class="resident-address" *ngIf="getResidentAddress()">{{ getResidentAddress() }}</p>
+      <p class="resident-address" *ngIf="!getResidentAddress()">{{ profile?.fraccionamiento_name || 'Sin dirección' }}</p>
+    </div>
+
+    <p class="scan-instruction">
+      Escanea este código en la entrada para validar tu acceso
+    </p>
+  </div>
+</div>
+
+
