@@ -18,3 +18,4 @@ ADD COLUMN IF NOT EXISTS house_number VARCHAR(50) NULL AFTER street;
 -- Nota: Si la columna 'address' ya existe y quieres mantenerla, puedes construirla
 -- a partir de street y house_number, o viceversa. Hola buenas tardes. Que tal estan?
 
+

@@ -8,3 +8,4 @@ ADD COLUMN codigo_qr TEXT NULL AFTER status;
 
 -- La columna codigo_qr almacenará el código QR generado como texto (URL o datos del QR)
 
+
