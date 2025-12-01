@@ -25,20 +25,18 @@ interface Camera {
   template: `
     <div class="cameras-container">
       <!-- Header -->
-      <div class="cameras-header">
-        <button class="btn-back-cameras" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="cameras-header">
         <h1 class="cameras-title">Sistema de Cámaras</h1>
-        <button class="btn-settings" (click)="openSettings()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
-          </svg>
-        </button>
-      </div>
+        <div class="header-actions">
+          <button class="btn-settings" (click)="openSettings()" title="Configuración">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+            </svg>
+          </button>
+          <button class="btn-back-cameras" (click)="goBack()">← Volver</button>
+        </div>
+      </header>
 
       <!-- System Status -->
       <div class="status-section">
@@ -368,70 +366,65 @@ interface Camera {
   styles: [`
     .cameras-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     /* Header */
     .cameras-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
+    }
+
+    .header-actions {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 32px;
+      gap: 12px;
     }
 
     .btn-back-cameras {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #20b2aa;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-cameras:hover {
-      transform: scale(1.05);
-      background-color: #1a9d96;
-    }
-
-    .btn-back-cameras svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .cameras-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       margin: 0;
-      flex: 1;
-      text-align: center;
     }
 
     .btn-settings {
       width: 40px;
       height: 40px;
-      border-radius: 50%;
-      background-color: #5B9BD5;
+      border-radius: 8px;
+      background-color: #6c757d;
       border: none;
       color: #ffffff;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-settings:hover {
-      transform: scale(1.05);
-      background-color: #4A8BC2;
+      background-color: #5a6268;
     }
 
     .btn-settings svg {
@@ -443,6 +436,7 @@ interface Camera {
     /* Status Section */
     .status-section {
       text-align: center;
+      margin: 40px;
       margin-bottom: 24px;
     }
 
@@ -469,7 +463,7 @@ interface Camera {
     .action-buttons {
       display: flex;
       gap: 12px;
-      margin-bottom: 24px;
+      margin: 0 40px 24px 40px;
     }
 
     .action-btn {
@@ -481,7 +475,7 @@ interface Camera {
       padding: 12px 16px;
       border-radius: 12px;
       border: none;
-      background-color: #2a2a2a;
+      background-color: #16213e;
       color: #ffffff;
       font-size: 14px;
       font-weight: 500;
@@ -490,7 +484,7 @@ interface Camera {
     }
 
     .action-btn:hover {
-      background-color: #333333;
+      background-color: #1e2a42;
     }
 
     .action-btn svg {
@@ -521,11 +515,11 @@ interface Camera {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 16px;
-      margin-bottom: 24px;
+      margin: 0 40px 24px 40px;
     }
 
     .camera-card {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 12px;
       position: relative;
@@ -535,7 +529,7 @@ interface Camera {
 
     .camera-card:hover {
       transform: translateY(-2px);
-      background-color: #333333;
+      background-color: #1e2a42;
     }
 
     .camera-badge {

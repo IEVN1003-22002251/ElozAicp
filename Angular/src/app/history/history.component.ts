@@ -12,12 +12,7 @@ import { VisitorService } from '../services/visitor.service';
   template: `
     <div class="history-container">
       <!-- Header -->
-      <div class="history-header">
-        <button class="btn-back-history" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="history-header">
         <h1 class="history-title">Historial</h1>
         <div class="header-actions">
           <button *ngIf="isAdmin" class="btn-add-visitor" (click)="goToAddVisitor()">
@@ -27,7 +22,7 @@ import { VisitorService } from '../services/visitor.service';
             </svg>
             Agregar Visitante
           </button>
-          <button class="btn-calendar" (click)="openDatePicker()">
+          <button class="btn-calendar" (click)="openDatePicker()" title="Filtrar por fecha">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -35,8 +30,9 @@ import { VisitorService } from '../services/visitor.service';
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
           </button>
+          <button class="btn-back-history" (click)="goBack()">← Volver</button>
         </div>
-      </div>
+      </header>
 
       <!-- Summary Section -->
       <div class="summary-section">
@@ -428,23 +424,24 @@ import { VisitorService } from '../services/visitor.service';
   styles: [`
     .history-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     /* Header */
     .history-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      margin-bottom: 32px;
-      gap: 16px;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
     
     .header-actions {
       display: flex;
       align-items: center;
+      gap: 12px;
       gap: 12px;
     }
     
@@ -475,28 +472,19 @@ import { VisitorService } from '../services/visitor.service';
     }
 
     .btn-back-history {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #20b2aa;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-history:hover {
-      transform: scale(1.05);
-      background-color: #1a9d96;
-    }
-
-    .btn-back-history svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .history-title {
@@ -535,6 +523,7 @@ import { VisitorService } from '../services/visitor.service';
 
     /* Summary Section */
     .summary-section {
+      margin: 40px;
       margin-bottom: 24px;
     }
 
@@ -555,7 +544,7 @@ import { VisitorService } from '../services/visitor.service';
     .filter-buttons {
       display: flex;
       gap: 12px;
-      margin-bottom: 32px;
+      margin: 0 40px 32px 40px;
       flex-wrap: wrap;
     }
 
@@ -569,7 +558,7 @@ import { VisitorService } from '../services/visitor.service';
       padding: 12px 16px;
       border-radius: 12px;
       border: none;
-      background-color: #2a2a2a;
+      background-color: #16213e;
       color: rgba(255, 255, 255, 0.7);
       font-size: 14px;
       font-weight: 500;
@@ -589,7 +578,7 @@ import { VisitorService } from '../services/visitor.service';
     }
 
     .filter-btn:not(.active):hover {
-      background-color: #333333;
+      background-color: #1e2a42;
     }
 
     /* Filter button specific colors when not active */
@@ -679,17 +668,18 @@ import { VisitorService } from '../services/visitor.service';
       display: flex;
       flex-direction: column;
       gap: 16px;
+      margin: 0 40px;
     }
 
     .record-item {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 16px;
       transition: transform 0.2s ease, background-color 0.2s ease;
     }
 
     .record-item:hover {
-      background-color: #333333;
+      background-color: #1e2a42;
       transform: translateY(-2px);
     }
 

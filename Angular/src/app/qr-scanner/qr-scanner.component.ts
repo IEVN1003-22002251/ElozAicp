@@ -13,14 +13,10 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
   template: `
     <div class="scanner-container">
       <!-- Header -->
-      <div class="scanner-header">
-        <button class="btn-back-scanner" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="scanner-header">
         <h1 class="scanner-title">Escanear Código QR</h1>
-      </div>
+        <button class="btn-back-scanner" (click)="goBack()">← Volver</button>
+      </header>
 
       <!-- Scanner Section -->
       <div class="scanner-section">
@@ -254,55 +250,47 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
   styles: [`
     .scanner-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     .scanner-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 32px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
 
     .btn-back-scanner {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #20b2aa;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-scanner:hover {
-      transform: scale(1.05);
-      background-color: #1a9d96;
-    }
-
-    .btn-back-scanner svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .scanner-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       margin: 0;
-      flex: 1;
     }
 
     .scanner-section {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
+      margin: 40px;
       margin-bottom: 24px;
     }
 
@@ -311,7 +299,7 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
       width: 100%;
       max-width: 600px;
       margin: 0 auto 24px;
-      background-color: #1a1a1a;
+      background-color: #1a1a2e;
       border-radius: 12px;
       overflow: visible;
       display: flex;
@@ -494,7 +482,7 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
       padding: 12px 16px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      background-color: #1a1a1a;
+      background-color: #1a1a2e;
       color: #ffffff;
       font-size: 14px;
       outline: none;
@@ -526,9 +514,10 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
     }
 
     .scan-result {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
+      margin: 40px;
     }
 
     .result-header {
