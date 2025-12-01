@@ -159,39 +159,40 @@ import { BannerService, Banner } from '../services/banner.service';
   styles: [`
     .admin-banner-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
+      background-color: #1a1a2e;
     }
 
     .admin-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #2a2a2a;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
 
     .admin-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       margin: 0;
     }
 
     .btn-back {
-      background-color: #6c757d;
+      background-color: #dc3545;
       color: #ffffff;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 10px 20px;
       font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
 
     .btn-back:hover {
-      background-color: #5a6268;
+      background-color: #c82333;
     }
 
     .admin-content {
@@ -199,11 +200,12 @@ import { BannerService, Banner } from '../services/banner.service';
       grid-template-columns: 1fr 1fr;
       gap: 30px;
       max-width: 1400px;
-      margin: 0 auto;
+      margin: 40px auto;
+      padding: 0 40px;
     }
 
     .form-section, .banners-section {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
     }
@@ -579,6 +581,14 @@ export class AdminBannerComponent implements OnInit {
         this.router.navigate(['/dashboard']);
       }
       return;
+    }
+
+    // Verificar si hay un banner para editar desde el estado de navegación
+    const navigation = this.router.getCurrentNavigation();
+    const bannerToEdit = navigation?.extras?.state?.['bannerToEdit'];
+    
+    if (bannerToEdit) {
+      this.editBanner(bannerToEdit);
     }
 
     this.loadBanners();

@@ -17,7 +17,7 @@
 
 .chat-container.admin-layout {
   padding-bottom: 20px;
-  background-color: #1a1a1a;
+  background-color: #1a1a2e;
   padding: 0;
 }
 
@@ -28,15 +28,15 @@
 /* Admin Chat Layout */
 .admin-chat-layout {
   display: flex;
-  height: calc(100vh - 120px);
-  padding: 20px;
+  height: calc(100vh - 80px);
+  padding: 40px;
   gap: 20px;
 }
 
 /* Residents Sidebar */
 .residents-sidebar {
   width: 350px;
-  background-color: #2a2a2a;
+  background-color: #16213e;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -126,7 +126,7 @@
 /* Conversation Area */
 .conversation-area {
   flex: 1;
-  background-color: #2a2a2a;
+  background-color: #16213e;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -201,47 +201,36 @@
 
 /* Header para Admin */
 .chat-header-admin {
+  background-color: #2a2a2a;
+  padding: 20px 40px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: #1a1a1a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-bottom: 0;
 }
 
 .chat-header-admin .btn-back {
-  padding: 8px 16px;
-  background-color: transparent;
+  background-color: #dc3545;
   color: #ffffff;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  transition: background-color 0.3s ease;
 }
 
 .chat-header-admin .btn-back:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.chat-header-admin .btn-back svg {
-  width: 16px;
-  height: 16px;
+  background-color: #c82333;
 }
 
 .chat-header-admin .chat-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
-  flex: 1;
 }
 
 /* Header para Residente */

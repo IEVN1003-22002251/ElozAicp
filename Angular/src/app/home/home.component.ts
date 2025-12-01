@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
 import { ResidentPreferenceService } from '../services/resident-preference.service';
 import { BannerCarouselComponent } from '../components/banner-carousel/banner-carousel.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-home',
@@ -113,6 +115,30 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
 
         <!-- Banner Carousel -->
         <app-banner-carousel></app-banner-carousel>
+
+        <!-- Emergency Button -->
+        <div class="emergency-section">
+          <button 
+            class="emergency-btn" 
+            [class.pressing]="isPressingEmergency"
+            [class.disabled]="isEmergencyDisabled"
+            (mousedown)="startEmergencyPress()"
+            (mouseup)="stopEmergencyPress()"
+            (mouseleave)="stopEmergencyPress()"
+            (touchstart)="startEmergencyPress()"
+            (touchend)="stopEmergencyPress()"
+            (touchcancel)="stopEmergencyPress()">
+            <div class="emergency-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <span class="emergency-text">Mantén presionado por 3 segundos</span>
+            <div class="emergency-progress" [style.width.%]="emergencyProgress"></div>
+          </button>
+        </div>
       </div>
 
       <!-- Bottom Navigation -->
@@ -391,6 +417,92 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
       color: rgba(255, 255, 255, 0.7);
     }
 
+    /* Emergency Button */
+    .emergency-section {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      padding: 0 20px;
+    }
+
+    .emergency-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      border: none;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+
+    .emergency-btn:hover:not(.disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(220, 53, 69, 0.6);
+    }
+
+    .emergency-btn.pressing {
+      background: linear-gradient(135deg, #ff4757 0%, #dc3545 100%);
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.5);
+    }
+
+    .emergency-btn.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .emergency-icon {
+      width: 64px;
+      height: 64px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite;
+    }
+
+    .emergency-btn.pressing .emergency-icon {
+      animation: pulse 0.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+    }
+
+    .emergency-text {
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+
+    .emergency-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background-color: rgba(255, 255, 255, 0.8);
+      transition: width 0.05s linear;
+      border-radius: 0 0 16px 16px;
+    }
+
     /* Promotional Banner */
     .promo-banner {
       background-color: #2a2a2a;
@@ -519,10 +631,18 @@ import { BannerCarouselComponent } from '../components/banner-carousel/banner-ca
     }
   `]
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
   profile: any = null;
   isPersonnelActive: boolean = true;
   isVisitorsActive: boolean = false;
+  
+  // Emergency button state
+  isPressingEmergency: boolean = false;
+  isEmergencyDisabled: boolean = false;
+  emergencyProgress: number = 0;
+  private emergencyPressInterval: any = null;
+  private emergencyPressStartTime: number = 0;
+  private readonly EMERGENCY_PRESS_DURATION = 3000; // 3 segundos
 
   // Método para debug - verificar estado actual
   getButtonStates() {
@@ -535,7 +655,8 @@ export class HomeComponent implements OnInit {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private preferenceService: ResidentPreferenceService
+    private preferenceService: ResidentPreferenceService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -668,6 +789,67 @@ export class HomeComponent implements OnInit {
 
   navigateTo(route: string): void {
     this.router.navigate([`/${route}`]);
+  }
+
+  startEmergencyPress(): void {
+    if (this.isEmergencyDisabled) return;
+    
+    this.isPressingEmergency = true;
+    this.emergencyPressStartTime = Date.now();
+    this.emergencyProgress = 0;
+    
+    this.emergencyPressInterval = setInterval(() => {
+      const elapsed = Date.now() - this.emergencyPressStartTime;
+      this.emergencyProgress = Math.min((elapsed / this.EMERGENCY_PRESS_DURATION) * 100, 100);
+      
+      if (elapsed >= this.EMERGENCY_PRESS_DURATION) {
+        this.triggerEmergency();
+        this.stopEmergencyPress();
+      }
+    }, 50);
+  }
+
+  stopEmergencyPress(): void {
+    if (this.emergencyPressInterval) {
+      clearInterval(this.emergencyPressInterval);
+      this.emergencyPressInterval = null;
+    }
+    this.isPressingEmergency = false;
+    this.emergencyProgress = 0;
+  }
+
+  triggerEmergency(): void {
+    if (this.isEmergencyDisabled || !this.profile?.id) return;
+    
+    this.isEmergencyDisabled = true;
+    
+    this.http.post<any>(`${environment.apiUrl}/emergency/alert`, {
+      resident_id: this.profile.id
+    }).subscribe({
+      next: (response) => {
+        if (response.success || response.exito) {
+          alert('🚨 Alerta de emergencia enviada. Los guardias han sido notificados.');
+        } else {
+          alert('Error al enviar la alerta. Por favor intenta nuevamente.');
+        }
+        // Habilitar el botón después de 5 segundos
+        setTimeout(() => {
+          this.isEmergencyDisabled = false;
+        }, 5000);
+      },
+      error: (error) => {
+        console.error('Error al enviar alerta de emergencia:', error);
+        alert('Error al enviar la alerta. Por favor intenta nuevamente.');
+        // Habilitar el botón después de 5 segundos
+        setTimeout(() => {
+          this.isEmergencyDisabled = false;
+        }, 5000);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopEmergencyPress();
   }
 
 }

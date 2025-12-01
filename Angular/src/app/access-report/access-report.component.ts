@@ -18,14 +18,10 @@ Chart.register(...registerables);
   template: `
     <div class="access-report-container">
       <!-- Header -->
-      <div class="report-header">
-        <button class="btn-back-report" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="report-header">
         <h1 class="report-title">Reporte de Accesos</h1>
-      </div>
+        <button class="btn-back-report" (click)="goBack()">← Volver</button>
+      </header>
 
       <!-- Loading State -->
       <div *ngIf="loading" class="loading-state">
@@ -173,46 +169,38 @@ Chart.register(...registerables);
   styles: [`
     .access-report-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     /* Header */
     .report-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 32px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
 
     .btn-back-report {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #20b2aa;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-report:hover {
-      transform: scale(1.05);
-      background-color: #1a9d96;
-    }
-
-    .btn-back-report svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .report-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       margin: 0;
@@ -253,11 +241,12 @@ Chart.register(...registerables);
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
+      margin: 40px;
       margin-bottom: 32px;
     }
 
     .summary-card {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 20px;
       display: flex;
@@ -268,7 +257,7 @@ Chart.register(...registerables);
 
     .summary-card:hover {
       transform: translateY(-2px);
-      background-color: #333333;
+      background-color: #1e2a42;
     }
 
     .stat-icon {
@@ -304,15 +293,20 @@ Chart.register(...registerables);
     }
 
     /* Charts Container */
+    .report-content {
+      padding: 40px;
+    }
+
     .charts-container {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px;
+      margin: 0 40px;
       margin-bottom: 32px;
     }
 
     .chart-card {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
     }
@@ -343,10 +337,10 @@ Chart.register(...registerables);
 
     /* Filters Container */
     .filters-container {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 20px;
-      margin-bottom: 24px;
+      margin: 0 40px 24px 40px;
       display: flex;
       gap: 32px;
       align-items: flex-start;

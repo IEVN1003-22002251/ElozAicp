@@ -1672,6 +1672,52 @@ def get_resident_preferences():
 # BANNERS ROUTES
 # =====================================================
 
+@app.route('/api/banners', methods=['GET'])
+def get_all_banners():
+    """Obtiene todos los banners (admin)"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT * FROM banners ORDER BY `order` ASC, id ASC"
+            )
+            banners = cursor.fetchall()
+        except Error as db_error:
+            # Si la tabla no existe, devolver array vacío
+            banners = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        # Convertir datetime a string
+        for banner in banners:
+            if banner.get('created_at'):
+                banner['created_at'] = banner['created_at'].isoformat() if hasattr(banner['created_at'], 'isoformat') else str(banner['created_at'])
+            if banner.get('updated_at'):
+                banner['updated_at'] = banner['updated_at'].isoformat() if hasattr(banner['updated_at'], 'isoformat') else str(banner['updated_at'])
+        
+        return jsonify({
+            'success': True,
+            'exito': True,
+            'data': banners,
+            'banners': banners  # También en formato banners para compatibilidad
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
 @app.route('/api/banners/active', methods=['GET'])
 def get_active_banners():
     """Obtiene los banners activos"""
@@ -1711,6 +1757,318 @@ def get_active_banners():
             'exito': False,
             'mensaje': f'Error en la base de datos: {str(e)}'
         }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/banners', methods=['POST'])
+def create_banner():
+    """Crea un nuevo banner"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'No se recibieron datos'
+            }), 400
+        
+        title = data.get('title')
+        description = data.get('description')
+        
+        if not title or not description:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'El título y la descripción son requeridos'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """INSERT INTO banners (title, description, cta_text, cta_url, is_active, `order`)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (
+                    title,
+                    description,
+                    data.get('cta_text'),
+                    data.get('cta_url'),
+                    data.get('is_active', True),
+                    data.get('order', 0)
+                )
+            )
+            conn.commit()
+            banner_id = cursor.lastrowid
+            
+            # Obtener el banner creado
+            cursor.execute("SELECT * FROM banners WHERE id = %s", (banner_id,))
+            banner = cursor.fetchone()
+            
+            cursor.close()
+            conn.close()
+            
+            # Convertir datetime a string
+            if banner.get('created_at'):
+                banner['created_at'] = banner['created_at'].isoformat() if hasattr(banner['created_at'], 'isoformat') else str(banner['created_at'])
+            if banner.get('updated_at'):
+                banner['updated_at'] = banner['updated_at'].isoformat() if hasattr(banner['updated_at'], 'isoformat') else str(banner['updated_at'])
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': 'Banner creado correctamente',
+                'data': banner
+            }), 201
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/banners/<int:banner_id>', methods=['PUT'])
+def update_banner(banner_id):
+    """Actualiza un banner existente"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'No se recibieron datos'
+            }), 400
+        
+        title = data.get('title')
+        description = data.get('description')
+        
+        if not title or not description:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'El título y la descripción son requeridos'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # Verificar que el banner existe
+            cursor.execute("SELECT id FROM banners WHERE id = %s", (banner_id,))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'Banner no encontrado'
+                }), 404
+            
+            # Actualizar el banner
+            cursor.execute(
+                """UPDATE banners 
+                   SET title = %s, description = %s, cta_text = %s, cta_url = %s, 
+                       is_active = %s, `order` = %s, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = %s""",
+                (
+                    title,
+                    description,
+                    data.get('cta_text'),
+                    data.get('cta_url'),
+                    data.get('is_active', True),
+                    data.get('order', 0),
+                    banner_id
+                )
+            )
+            conn.commit()
+            
+            # Obtener el banner actualizado
+            cursor.execute("SELECT * FROM banners WHERE id = %s", (banner_id,))
+            banner = cursor.fetchone()
+            
+            cursor.close()
+            conn.close()
+            
+            # Convertir datetime a string
+            if banner.get('created_at'):
+                banner['created_at'] = banner['created_at'].isoformat() if hasattr(banner['created_at'], 'isoformat') else str(banner['created_at'])
+            if banner.get('updated_at'):
+                banner['updated_at'] = banner['updated_at'].isoformat() if hasattr(banner['updated_at'], 'isoformat') else str(banner['updated_at'])
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': 'Banner actualizado correctamente',
+                'data': banner
+            }), 200
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/banners/<int:banner_id>', methods=['DELETE'])
+def delete_banner(banner_id):
+    """Elimina un banner"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # Verificar que el banner existe
+            cursor.execute("SELECT id FROM banners WHERE id = %s", (banner_id,))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'Banner no encontrado'
+                }), 404
+            
+            # Eliminar el banner
+            cursor.execute("DELETE FROM banners WHERE id = %s", (banner_id,))
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': 'Banner eliminado correctamente'
+            }), 200
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/banners/<int:banner_id>/status', methods=['PUT'])
+def update_banner_status(banner_id):
+    """Actualiza el estado (activo/inactivo) de un banner"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'is_active' not in data:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'El campo is_active es requerido'
+            }), 400
+        
+        is_active = bool(data.get('is_active'))
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # Verificar que el banner existe
+            cursor.execute("SELECT id FROM banners WHERE id = %s", (banner_id,))
+            if not cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'Banner no encontrado'
+                }), 404
+            
+            # Actualizar el estado
+            cursor.execute(
+                "UPDATE banners SET is_active = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (is_active, banner_id)
+            )
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': 'Estado del banner actualizado',
+                'data': {
+                    'id': banner_id,
+                    'is_active': is_active
+                }
+            }), 200
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
+        
     except Exception as e:
         return jsonify({
             'success': False,
@@ -1820,6 +2178,124 @@ def mark_notification_as_read(notification_id):
             'exito': True,
             'mensaje': 'Notificación marcada como leída'
         }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'exito': False,
+            'mensaje': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/emergency/alert', methods=['POST'])
+def create_emergency_alert():
+    """Crea una alerta de emergencia desde un residente y la envía a todos los guardias"""
+    try:
+        data = request.get_json()
+        resident_id = data.get('resident_id')
+        
+        if not resident_id:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'resident_id es requerido'
+            }), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': 'Error de conexión a la base de datos'
+            }), 500
+        
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # Obtener información del residente
+            cursor.execute(
+                "SELECT id, name, user_name, email, fraccionamiento_id, street, house_number FROM profiles WHERE id = %s",
+                (resident_id,)
+            )
+            resident = cursor.fetchone()
+            
+            if not resident:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'Residente no encontrado'
+                }), 404
+            
+            # Obtener todos los guardias
+            cursor.execute(
+                "SELECT id FROM profiles WHERE role = 'guard' OR role = 'admin'"
+            )
+            guards = cursor.fetchall()
+            
+            if not guards:
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'exito': False,
+                    'mensaje': 'No hay guardias disponibles'
+                }), 404
+            
+            # Crear mensaje de emergencia con datos del residente
+            location_info = []
+            if resident.get('fraccionamiento_id'):
+                try:
+                    cursor.execute("SELECT name FROM fraccionamientos WHERE id = %s", (resident['fraccionamiento_id'],))
+                    fracc = cursor.fetchone()
+                    if fracc:
+                        location_info.append(fracc['name'])
+                except Error:
+                    # Si la tabla fraccionamientos no existe, continuar sin error
+                    pass
+            if resident.get('street'):
+                location_info.append(resident['street'])
+            if resident.get('house_number'):
+                location_info.append(f"Casa {resident['house_number']}")
+            
+            location_str = ", ".join(location_info) if location_info else "Ubicación no especificada"
+            
+            resident_name = resident.get('name') or resident.get('user_name') or resident.get('email') or 'Residente'
+            title = f"🚨 ALERTA DE EMERGENCIA"
+            message = f"El residente {resident_name} ha activado el botón de emergencia.\n\n"
+            message += f"📋 Datos del residente:\n"
+            message += f"• Nombre: {resident_name}\n"
+            message += f"• Email: {resident.get('email', 'N/A')}\n"
+            message += f"• Ubicación: {location_str}"
+            
+            # Crear notificación para cada guardia
+            created_notifications = []
+            for guard in guards:
+                cursor.execute(
+                    "INSERT INTO notifications (user_id, title, message, `read`) VALUES (%s, %s, %s, 0)",
+                    (guard['id'], title, message)
+                )
+                created_notifications.append(cursor.lastrowid)
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'exito': True,
+                'mensaje': f'Alerta de emergencia enviada a {len(guards)} guardia(s)',
+                'notifications_created': len(created_notifications)
+            }), 200
+            
+        except Error as db_error:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'exito': False,
+                'mensaje': f'Error en la base de datos: {str(db_error)}'
+            }), 500
         
     except Exception as e:
         return jsonify({
