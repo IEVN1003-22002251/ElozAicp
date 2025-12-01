@@ -10,14 +10,10 @@ import { AuthService } from '../services/auth.service';
   template: `
     <div class="qr-access-container">
       <!-- Header con botón de regreso -->
-      <div class="qr-header">
-        <button class="btn-back-qr" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="qr-header">
         <h1 class="qr-title">Registro Código QR</h1>
-      </div>
+        <button class="btn-back-qr" (click)="goBack()">← Volver</button>
+      </header>
 
       <!-- Bloque de información -->
       <div class="info-card">
@@ -48,39 +44,34 @@ import { AuthService } from '../services/auth.service';
   styles: [`
     .qr-access-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     /* Header */
     .qr-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
 
     .btn-back-qr {
-      background-color: transparent;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-qr:hover {
-      transform: translateX(-4px);
-    }
-
-    .btn-back-qr svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .qr-title {
@@ -92,9 +83,10 @@ import { AuthService } from '../services/auth.service';
 
     /* Bloque de información */
     .info-card {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 20px;
+      margin: 40px;
       margin-bottom: 24px;
     }
 
@@ -107,9 +99,10 @@ import { AuthService } from '../services/auth.service';
 
     /* Tarjeta con QR Code */
     .qr-card {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
+      margin: 0 40px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -167,8 +160,13 @@ import { AuthService } from '../services/auth.service';
     }
 
     @media (max-width: 480px) {
-      .qr-access-container {
-        padding: 16px;
+      .qr-header {
+        padding: 16px 20px;
+      }
+
+      .info-card,
+      .qr-card {
+        margin: 20px;
       }
 
       .qr-title {

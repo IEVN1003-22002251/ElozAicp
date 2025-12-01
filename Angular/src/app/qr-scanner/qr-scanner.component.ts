@@ -13,14 +13,10 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
   template: `
     <div class="scanner-container">
       <!-- Header -->
-      <div class="scanner-header">
-        <button class="btn-back-scanner" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      <header class="scanner-header">
         <h1 class="scanner-title">Escanear Código QR</h1>
-      </div>
+        <button class="btn-back-scanner" (click)="goBack()">← Volver</button>
+      </header>
 
       <!-- Scanner Section -->
       <div class="scanner-section">
@@ -178,8 +174,66 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
           </div>
         </div>
 
+        <!-- Event QR Result -->
+        <div *ngIf="scanResult.type === 'event'" class="result-content event-result">
+          <div class="result-badge event-badge">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Evento
+          </div>
+          <div class="result-info">
+            <div class="info-row">
+              <span class="info-label">Nombre del Evento:</span>
+              <span class="info-value">{{ scanResult.event_name || 'N/A' }}</span>
+            </div>
+            <div class="info-row" *ngIf="scanResult.event_date">
+              <span class="info-label">Fecha:</span>
+              <span class="info-value">{{ formatEventDate(scanResult.event_date) }}</span>
+            </div>
+            <div class="info-row" *ngIf="scanResult.event_time">
+              <span class="info-label">Hora:</span>
+              <span class="info-value">{{ formatEventTime(scanResult.event_time) }}</span>
+            </div>
+            <div class="info-row" *ngIf="scanResult.number_of_guests">
+              <span class="info-label">Número de Invitados:</span>
+              <span class="info-value">{{ scanResult.number_of_guests }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Lugar:</span>
+              <span class="info-value">
+                <span *ngIf="scanResult.event_location === 'domicilio' && scanResult.resident_address">
+                  {{ scanResult.resident_address }}
+                </span>
+                <span *ngIf="scanResult.event_location === 'domicilio' && !scanResult.resident_address">
+                  {{ getLocationLabel(scanResult.event_location) }}
+                </span>
+                <span *ngIf="scanResult.event_location && scanResult.event_location !== 'domicilio'">
+                  {{ getLocationLabel(scanResult.event_location) }}
+                </span>
+                <span *ngIf="!scanResult.event_location">No especificado</span>
+              </span>
+            </div>
+            <div class="info-row" *ngIf="scanResult.resident_name">
+              <span class="info-label">Anfitrión:</span>
+              <span class="info-value">{{ scanResult.resident_name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">ID del Evento:</span>
+              <span class="info-value">{{ scanResult.visitor_id || scanResult.event_id || 'N/A' }}</span>
+            </div>
+            <div class="info-row" *ngIf="scanResult.timestamp">
+              <span class="info-label">Fecha de Registro:</span>
+              <span class="info-value">{{ formatDate(scanResult.timestamp) }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Invalid QR -->
-        <div *ngIf="scanResult.type !== 'visitor' && scanResult.type !== 'resident'" class="result-content invalid-result">
+        <div *ngIf="scanResult.type !== 'visitor' && scanResult.type !== 'resident' && scanResult.type !== 'event' && scanResult.type !== 'one-time'" class="result-content invalid-result">
           <div class="result-badge invalid-badge">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -196,55 +250,47 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
   styles: [`
     .scanner-container {
       min-height: 100vh;
-      background-color: #1a1a1a;
-      padding: 20px;
-      padding-bottom: 40px;
+      background-color: #1a1a2e;
     }
 
     .scanner-header {
+      background-color: #2a2a2a;
+      padding: 20px 40px;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 32px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0;
     }
 
     .btn-back-scanner {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: #20b2aa;
-      border: none;
+      background-color: #dc3545;
       color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      transition: background-color 0.3s ease;
     }
 
     .btn-back-scanner:hover {
-      transform: scale(1.05);
-      background-color: #1a9d96;
-    }
-
-    .btn-back-scanner svg {
-      width: 20px;
-      height: 20px;
-      stroke: currentColor;
+      background-color: #c82333;
     }
 
     .scanner-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       margin: 0;
-      flex: 1;
     }
 
     .scanner-section {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
+      margin: 40px;
       margin-bottom: 24px;
     }
 
@@ -253,7 +299,7 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
       width: 100%;
       max-width: 600px;
       margin: 0 auto 24px;
-      background-color: #1a1a1a;
+      background-color: #1a1a2e;
       border-radius: 12px;
       overflow: visible;
       display: flex;
@@ -436,7 +482,7 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
       padding: 12px 16px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      background-color: #1a1a1a;
+      background-color: #1a1a2e;
       color: #ffffff;
       font-size: 14px;
       outline: none;
@@ -468,9 +514,10 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
     }
 
     .scan-result {
-      background-color: #2a2a2a;
+      background-color: #16213e;
       border-radius: 12px;
       padding: 24px;
+      margin: 40px;
     }
 
     .result-header {
@@ -529,6 +576,11 @@ import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
     .resident-badge {
       background-color: rgba(32, 178, 170, 0.2);
       color: #20b2aa;
+    }
+
+    .event-badge {
+      background-color: rgba(212, 165, 116, 0.2);
+      color: #d4a574;
     }
 
     .invalid-badge {
@@ -933,48 +985,41 @@ export class QrScannerComponent implements OnInit, OnDestroy {
       console.log('QR Data String original:', qrDataString);
       console.log('QR Data String final:', finalQrDataString);
       
-      // Verificar si el QR está expirado (solo para visitantes de "solo una vez")
-      if (qrData.type === 'one-time' && qrData.expires_at) {
-        const expirationDate = new Date(qrData.expires_at);
-        const now = new Date();
-        if (now > expirationDate) {
-          this.loading = false;
-          this.scanResult = {
-            type: 'invalid',
-            message: 'Este código QR ha expirado. Los códigos QR de visitantes de solo una vez tienen un plazo de 24 horas desde su creación.'
-          };
-          return;
-        }
-        // Calcular tiempo restante
-        const timeRemaining = expirationDate.getTime() - now.getTime();
-        const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const minutesRemaining = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        console.log(`QR válido. Tiempo restante: ${hoursRemaining}h ${minutesRemaining}m`);
+      // Normalizar formato simplificado a formato completo
+      // El nuevo formato simplificado usa 't' (tipo) e 'id' (ID)
+      let qrType = qrData.t || qrData.type; // 't' es el formato simplificado
+      let qrId = qrData.id || qrData.visitor_id || qrData.event_id; // 'id' es el formato simplificado
+      
+      // Si no hay tipo o ID, el QR es inválido
+      if (!qrType || !qrId) {
+        this.loading = false;
+        this.scanResult = {
+          type: 'invalid',
+          message: 'Código QR inválido: falta información de tipo o ID'
+        };
+        return;
       }
       
-      if (qrData.type === 'visitor' || qrData.type === 'one-time') {
-        // Obtener el visitante actual para verificar su estado y actualizarlo
-        const visitorId = qrData.visitor_id;
-        if (visitorId) {
-          this.updateVisitorStatusOnScan(visitorId, qrData, finalQrDataString);
-        } else {
-          // Si no hay visitor_id, solo mostrar información
-          this.loading = false;
-          this.scanResult = {
-            type: qrData.type || 'visitor',
-            visitor_name: qrData.visitor_name || '',
-            visitor_id: qrData.visitor_id || '',
-            timestamp: qrData.timestamp || '',
-            expires_at: qrData.expires_at || null
-          };
-        }
-      } else if (qrData.type === 'resident') {
+      // Mapear tipos abreviados a tipos completos
+      const typeMap: { [key: string]: string } = {
+        'visitor': 'visitor',
+        'one-time': 'one-time',
+        'event': 'event',
+        'resident': 'resident'
+      };
+      qrType = typeMap[qrType] || qrType;
+      
+      // Si es un visitante o evento, obtener información completa desde el backend
+      if (qrType === 'visitor' || qrType === 'one-time' || qrType === 'event') {
+        // Usar el ID para obtener información completa
+        this.processVisitorOrEventQR(qrId, qrType, finalQrDataString);
+      } else if (qrType === 'resident') {
         this.loading = false;
         this.scanResult = {
           type: 'resident',
           name: qrData.name || qrData.user_name || '',
           user_name: qrData.user_name || qrData.name || '',
-          user_id: qrData.user_id || '',
+          user_id: qrId || qrData.user_id || '',
           fraccionamiento_id: qrData.fraccionamiento_id || '',
           house_number: qrData.house_number || '',
           timestamp: qrData.timestamp || ''
@@ -994,56 +1039,133 @@ export class QrScannerComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateVisitorStatusOnScan(visitorId: string, qrData: any, qrDataString: string): void {
-    // Primero obtener el visitante actual para ver su estado
-    this.visitorService.getVisitor(visitorId).subscribe({
+  processVisitorOrEventQR(id: string, type: string, qrDataString: string): void {
+    // Obtener información completa del visitante/evento desde el backend
+    this.visitorService.getVisitor(id).subscribe({
       next: (visitorResponse) => {
-        let currentStatus = 'active';
+        let visitor: any = null;
         if (visitorResponse.exito && visitorResponse.visitor) {
-          currentStatus = visitorResponse.visitor.status || 'active';
+          visitor = visitorResponse.visitor;
         } else if (visitorResponse.visitor) {
-          currentStatus = visitorResponse.visitor.status || 'active';
+          visitor = visitorResponse.visitor;
         }
-
-        // Determinar el siguiente estado
-        let nextStatus = '';
-        if (currentStatus === 'active' || currentStatus === 'Activo') {
-          nextStatus = 'dentro';
-        } else if (currentStatus === 'dentro' || currentStatus === 'Dentro') {
-          nextStatus = 'salio';
-        } else {
-          // Si ya está en 'salio' o cualquier otro estado, no cambiar
-          nextStatus = currentStatus;
+        
+        if (!visitor) {
+          this.loading = false;
+          this.scanResult = {
+            type: 'invalid',
+            message: 'Visitante o evento no encontrado'
+          };
+          return;
         }
-
-        // Actualizar el estado del visitante si es necesario
-        if (nextStatus !== currentStatus) {
-          this.visitorService.updateVisitor(visitorId, { status: nextStatus }).subscribe({
-            next: (updateResponse) => {
-              console.log('Estado del visitante actualizado:', nextStatus);
-              // Continuar con la visualización de datos
-              this.displayVisitorInfo(qrData, qrDataString, nextStatus);
+        
+        // Si es un evento, mostrar información del evento
+        if (type === 'event') {
+          // Para eventos, usar decodeVisitorQR para obtener información completa (incluyendo dirección si es domicilio)
+          this.visitorService.decodeVisitorQR(qrDataString).subscribe({
+            next: (response) => {
+              this.loading = false;
+              if (response.exito && response.visitor_info) {
+                const eventInfo = response.visitor_info;
+                this.scanResult = {
+                  type: 'event',
+                  event_name: eventInfo.event_name || visitor.name || '',
+                  visitor_id: eventInfo.visitor_id || visitor.id,
+                  event_id: eventInfo.visitor_id || visitor.id,
+                  event_date: eventInfo.event_date || visitor.eventDate || '',
+                  event_time: eventInfo.event_time || visitor.eventTime || '',
+                  number_of_guests: eventInfo.number_of_guests || visitor.numberOfGuests || '',
+                  event_location: eventInfo.event_location || visitor.eventLocation || '',
+                  resident_name: eventInfo.resident_name || '',
+                  resident_address: eventInfo.resident_address || '',
+                  timestamp: eventInfo.timestamp || visitor.created_at || ''
+                };
+              } else {
+                // Fallback si no se puede decodificar
+                this.loading = false;
+                this.scanResult = {
+                  type: 'event',
+                  event_name: visitor.name || '',
+                  event_id: visitor.id,
+                  visitor_id: visitor.id,
+                  event_date: visitor.eventDate || '',
+                  event_time: visitor.eventTime || '',
+                  number_of_guests: visitor.numberOfGuests || '',
+                  event_location: visitor.eventLocation || '',
+                  timestamp: visitor.created_at || ''
+                };
+              }
             },
-            error: (updateErr) => {
-              console.error('Error al actualizar estado del visitante:', updateErr);
-              // Continuar con la visualización aunque falle la actualización
-              this.displayVisitorInfo(qrData, qrDataString, currentStatus);
+            error: (err) => {
+              this.loading = false;
+              console.error('Error al decodificar QR de evento:', err);
+              // Fallback con datos básicos
+              this.scanResult = {
+                type: 'event',
+                event_name: visitor.name || '',
+                event_id: visitor.id,
+                visitor_id: visitor.id,
+                event_date: visitor.eventDate || '',
+                event_time: visitor.eventTime || '',
+                number_of_guests: visitor.numberOfGuests || '',
+                event_location: visitor.eventLocation || '',
+                timestamp: visitor.created_at || ''
+              };
             }
           });
-        } else {
-          // Si no hay cambio de estado, solo mostrar información
-          this.displayVisitorInfo(qrData, qrDataString, currentStatus);
+          return;
         }
+        
+        // Si es un visitante, actualizar estado y mostrar información
+        let currentStatus = visitor.status || 'active';
+        this.updateVisitorStatusOnScan(id, currentStatus, qrDataString);
       },
       error: (err) => {
-        console.error('Error al obtener visitante:', err);
-        // Si falla obtener el visitante, solo mostrar información del QR
-        this.displayVisitorInfo(qrData, qrDataString, 'active');
+        this.loading = false;
+        console.error('Error al obtener visitante/evento:', err);
+        this.scanResult = {
+          type: 'invalid',
+          message: 'Error al obtener información del visitante o evento'
+        };
       }
     });
   }
 
-  displayVisitorInfo(qrData: any, qrDataString: string, currentStatus: string): void {
+  updateVisitorStatusOnScan(visitorId: string, currentStatus: string, qrDataString: string): void {
+    // Determinar el siguiente estado - ciclo continuo para visitantes frecuentes
+    let nextStatus = '';
+    const normalizedStatus = (currentStatus || '').toLowerCase();
+    
+    if (normalizedStatus === 'active' || normalizedStatus === 'activo') {
+      // Si está activo, cambiar a dentro
+      nextStatus = 'dentro';
+    } else if (normalizedStatus === 'dentro') {
+      // Si está dentro, cambiar a salio
+      nextStatus = 'salio';
+    } else if (normalizedStatus === 'salio' || normalizedStatus === 'salió') {
+      // Si está salio, cambiar a dentro (ciclo continuo)
+      nextStatus = 'dentro';
+    } else {
+      // Para cualquier otro estado, iniciar en dentro
+      nextStatus = 'dentro';
+    }
+
+    // Actualizar el estado del visitante
+    this.visitorService.updateVisitor(visitorId, { status: nextStatus }).subscribe({
+      next: (updateResponse) => {
+        console.log('Estado del visitante actualizado:', nextStatus);
+        // Continuar con la visualización de datos con el nuevo estado
+        this.displayVisitorInfo(visitorId, qrDataString, nextStatus);
+      },
+      error: (updateErr) => {
+        console.error('Error al actualizar estado del visitante:', updateErr);
+        // Continuar con la visualización aunque falle la actualización
+        this.displayVisitorInfo(visitorId, qrDataString, currentStatus);
+      }
+    });
+  }
+
+  displayVisitorInfo(visitorId: string, qrDataString: string, currentStatus: string): void {
     // Si es admin, intentar obtener información completa del backend
     if (this.isAdmin) {
       // Usar el string JSON final para decodificar
@@ -1051,63 +1173,84 @@ export class QrScannerComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.loading = false;
           if (response.exito && response.visitor_info) {
-            this.scanResult = {
-              type: qrData.type || 'visitor',
-              visitor_name: response.visitor_info.visitor_name || qrData.visitor_name || '',
-              visitor_id: response.visitor_info.visitor_id || qrData.visitor_id || '',
-              resident_name: response.visitor_info.resident_name || qrData.resident_name || '',
-              resident_address: response.visitor_info.resident_address || qrData.resident_address || '',
-              resident_street: response.visitor_info.resident_street || qrData.resident_street || '',
-              resident_house_number: response.visitor_info.resident_house_number || qrData.resident_house_number || '',
-              timestamp: response.visitor_info.timestamp || qrData.timestamp || '',
-              expires_at: qrData.expires_at || null,
-              status: currentStatus
-            };
+            const info = response.visitor_info;
+            // Si es un evento, incluir información del evento
+            if (info.visitor_type === 'event') {
+              this.scanResult = {
+                type: 'event',
+                event_name: info.event_name || '',
+                visitor_id: info.visitor_id || visitorId,
+                event_id: info.visitor_id || visitorId,
+                event_date: info.event_date || '',
+                event_time: info.event_time || '',
+                number_of_guests: info.number_of_guests || '',
+                event_location: info.event_location || '',
+                resident_name: info.resident_name || '',
+                resident_address: info.resident_address || '',
+                timestamp: info.timestamp || '',
+                status: currentStatus
+              };
+            } else {
+              // Si es un visitante
+              this.scanResult = {
+                type: info.visitor_type || 'visitor',
+                visitor_name: info.visitor_name || '',
+                visitor_id: info.visitor_id || visitorId,
+                resident_name: info.resident_name || '',
+                resident_address: info.resident_address || '',
+                resident_street: info.resident_street || '',
+                resident_house_number: info.resident_house_number || '',
+                timestamp: info.timestamp || '',
+                status: currentStatus
+              };
+            }
           } else {
-            // Usar datos del QR directamente
-            this.scanResult = {
-              type: qrData.type || 'visitor',
-              visitor_name: qrData.visitor_name || '',
-              visitor_id: qrData.visitor_id || '',
-              resident_name: qrData.resident_name || '',
-              resident_address: qrData.resident_address || '',
-              resident_street: qrData.resident_street || '',
-              resident_house_number: qrData.resident_house_number || '',
-              timestamp: qrData.timestamp || '',
-              expires_at: qrData.expires_at || null,
-              status: currentStatus
-            };
+            // Si falla el decode, obtener directamente el visitante
+            this.getVisitorInfoDirectly(visitorId, currentStatus);
           }
         },
         error: (err) => {
           this.loading = false;
           console.error('Error decoding QR from backend:', err);
-          // Si falla, usar datos del QR directamente
-          this.scanResult = {
-            type: 'visitor',
-            visitor_name: qrData.visitor_name || '',
-            visitor_id: qrData.visitor_id || '',
-            resident_name: qrData.resident_name || '',
-            resident_address: qrData.resident_address || '',
-            resident_street: qrData.resident_street || '',
-            resident_house_number: qrData.resident_house_number || '',
-            timestamp: qrData.timestamp || '',
-            status: currentStatus
-          };
+          // Si falla, obtener directamente el visitante
+          this.getVisitorInfoDirectly(visitorId, currentStatus);
         }
       });
     } else {
-      // Si no es admin, solo mostrar información básica
-      this.loading = false;
-      this.scanResult = {
-        type: qrData.type || 'visitor',
-        visitor_name: qrData.visitor_name || '',
-        visitor_id: qrData.visitor_id || '',
-        timestamp: qrData.timestamp || '',
-        expires_at: qrData.expires_at || null,
-        status: currentStatus
-      };
+      // Si no es admin, obtener información básica
+      this.getVisitorInfoDirectly(visitorId, currentStatus);
     }
+  }
+
+  getVisitorInfoDirectly(visitorId: string, currentStatus: string): void {
+    this.visitorService.getVisitor(visitorId).subscribe({
+      next: (response) => {
+        this.loading = false;
+        const visitor = response.visitor || (response.exito ? response.visitor : null);
+        if (visitor) {
+          this.scanResult = {
+            type: visitor.type || 'visitor',
+            visitor_name: visitor.name || '',
+            visitor_id: visitor.id || visitorId,
+            timestamp: visitor.created_at || '',
+            status: currentStatus
+          };
+        } else {
+          this.scanResult = {
+            type: 'invalid',
+            message: 'Visitante no encontrado'
+          };
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        console.error('Error al obtener visitante:', err);
+        this.scanResult = {
+          type: 'invalid',
+          message: 'Error al obtener información del visitante'
+        };
+      }
+    });
   }
 
   clearResult(): void {
@@ -1171,6 +1314,40 @@ export class QrScannerComponent implements OnInit, OnDestroy {
     } catch {
       return dateString;
     }
+  }
+
+  formatEventDate(dateString: string): string {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  }
+
+  formatEventTime(timeString: string): string {
+    if (!timeString) return 'N/A';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'p.m.' : 'a.m.';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    } catch {
+      return timeString;
+    }
+  }
+
+  getLocationLabel(location: string): string {
+    if (!location) return '';
+    const locationMap: { [key: string]: string } = {
+      'domicilio': 'Domicilio',
+      'casa_club': 'Casa club',
+      'lago': 'Lago',
+      'kiosco': 'Kiosco'
+    };
+    return locationMap[location] || location;
   }
 
   goBack(): void {

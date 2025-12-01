@@ -74,24 +74,20 @@ export class PendingRegistrationsComponent implements OnInit {
 
     this.registrationService.approveRegistration(registration.id).subscribe({
       next: (response) => {
-        if (response.success) {
-          this.success = 'Registro aprobado exitosamente';
-          // Actualizar el estado del registro localmente
-          registration.status = 'approved';
-          registration.updated_at = new Date().toISOString();
-          // Mover el registro de pendientes a aprobados
-          this.pendingRegistrations = this.pendingRegistrations.filter(r => r.id !== registration.id);
-          this.approvedRegistrations.unshift(registration);
-          this.loading = false;
+        if (response.success || response.exito) {
+          this.success = response.mensaje || response.message || 'Registro aprobado exitosamente';
+          // Recargar todos los registros para obtener datos actualizados
+          this.loadRegistrations();
           setTimeout(() => {
             this.success = '';
           }, 3000);
         } else {
-          this.error = 'Error al aprobar el registro';
+          this.error = response.mensaje || response.message || 'Error al aprobar el registro';
           this.loading = false;
         }
       },
       error: (err) => {
+        console.error('Error al aprobar registro:', err);
         this.error = err.error?.mensaje || err.error?.message || 'Error al aprobar el registro';
         this.loading = false;
       }
@@ -102,6 +98,10 @@ export class PendingRegistrationsComponent implements OnInit {
     if (!registration.id || this.loading || registration.status !== 'pending') return;
 
     const reason = prompt(`¿Por qué deseas rechazar el registro de ${registration.full_name}? (Opcional)`);
+    if (reason === null) {
+      // Usuario canceló el prompt
+      return;
+    }
 
     this.loading = true;
     this.error = '';
@@ -109,27 +109,20 @@ export class PendingRegistrationsComponent implements OnInit {
 
     this.registrationService.rejectRegistration(registration.id, reason || undefined).subscribe({
       next: (response) => {
-        if (response.success) {
-          this.success = 'Registro rechazado exitosamente';
-          // Actualizar el estado del registro localmente
-          registration.status = 'rejected';
-          registration.updated_at = new Date().toISOString();
-          if (reason) {
-            registration.rejection_reason = reason;
-          }
-          // Mover el registro de pendientes a rechazados
-          this.pendingRegistrations = this.pendingRegistrations.filter(r => r.id !== registration.id);
-          this.rejectedRegistrations.unshift(registration);
-          this.loading = false;
+        if (response.success || response.exito) {
+          this.success = response.mensaje || response.message || 'Registro rechazado exitosamente';
+          // Recargar todos los registros para obtener datos actualizados
+          this.loadRegistrations();
           setTimeout(() => {
             this.success = '';
           }, 3000);
         } else {
-          this.error = 'Error al rechazar el registro';
+          this.error = response.mensaje || response.message || 'Error al rechazar el registro';
           this.loading = false;
         }
       },
       error: (err) => {
+        console.error('Error al rechazar registro:', err);
         this.error = err.error?.mensaje || err.error?.message || 'Error al rechazar el registro';
         this.loading = false;
       }

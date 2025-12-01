@@ -12,8 +12,16 @@ export const adminGuard: CanActivateFn = (route, state) => {
   }
 
   const profile = authService.getCachedProfile();
-  if (!profile || profile.role?.toLowerCase() !== 'admin') {
-    router.navigate(['/dashboard']);
+  const role = profile?.role?.toLowerCase();
+  
+  // Permitir acceso a admin y guard
+  if (!profile || (role !== 'admin' && role !== 'guard')) {
+    // Redirigir según el rol
+    if (role === 'resident') {
+      router.navigate(['/home']);
+    } else {
+      router.navigate(['/dashboard']);
+    }
     return false;
   }
 

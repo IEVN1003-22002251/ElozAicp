@@ -266,11 +266,17 @@ import { RegistrationService } from '../services/registration.service';
               />
             </div>
 
+            <!-- Mensaje de error -->
+            <div *ngIf="error" class="error-message" style="margin-top: 16px; margin-bottom: 16px;">
+              {{ error }}
+            </div>
+
             <!-- Botón Enviar solicitud -->
             <button
               type="submit"
               class="btn-submit"
-              [disabled]="!locationForm.valid || loading"
+              [disabled]="loading"
+              (click)="submitRegistration()"
             >
               <svg class="paper-plane-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -603,6 +609,16 @@ import { RegistrationService } from '../services/registration.service';
       cursor: not-allowed;
     }
 
+    .error-message {
+      background-color: #dc3545;
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      width: 100%;
+    }
+
     .paper-plane-icon {
       flex-shrink: 0;
     }
@@ -713,7 +729,26 @@ export class RegisterComponent {
   }
 
   submitRegistration(): void {
-    if (this.loading) return;
+    if (this.loading) {
+      console.log('Ya se está procesando una solicitud');
+      return;
+    }
+
+    // Validar que los campos requeridos estén llenos
+    if (!this.formData.street || !this.formData.house_number) {
+      this.error = 'Por favor completa todos los campos de dirección';
+      return;
+    }
+
+    if (!this.formData.fraccionamiento_id) {
+      this.error = 'Por favor selecciona un fraccionamiento';
+      return;
+    }
+
+    console.log('Enviando registro con datos:', {
+      ...this.formData,
+      password: '***' // No mostrar la contraseña en el log
+    });
 
     this.loading = true;
     this.error = '';
@@ -726,13 +761,16 @@ export class RegisterComponent {
       role: 'resident',
       fraccionamiento_id: this.formData.fraccionamiento_id,
       status: 'pending',
-      phone: this.formData.phone,
+      phone: this.formData.phone || null,
       street: this.formData.street,
       house_number: this.formData.house_number
     };
 
+    console.log('Datos a enviar:', registrationData);
+
     this.registrationService.createRegistration(registrationData).subscribe({
       next: (response) => {
+        console.log('Respuesta del servidor:', response);
         if (response.success || response.exito) {
           // Redirigir a una página de confirmación o al login
           this.router.navigate(['/auth/sing-in'], {
@@ -741,10 +779,12 @@ export class RegisterComponent {
         } else {
           this.error = response.message || response.mensaje || 'Error al enviar la solicitud';
           this.loading = false;
+          console.error('Error en la respuesta:', response);
         }
       },
       error: (err) => {
-        this.error = err.error?.message || err.error?.mensaje || 'Error al conectar con el servidor';
+        console.error('Error al enviar registro:', err);
+        this.error = err.error?.message || err.error?.mensaje || err.error?.error || 'Error al conectar con el servidor';
         this.loading = false;
       }
     });

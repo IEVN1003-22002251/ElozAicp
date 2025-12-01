@@ -123,6 +123,7 @@
             name="serviceDate"
           />
           <span class="date-placeholder" *ngIf="!hasDate">Seleccionar fecha</span>
+          <span class="date-display" *ngIf="hasDate">{{ formatDateDisplay(providerData.serviceDate) }}</span>
         </div>
       </div>
 
@@ -210,6 +211,7 @@
             name="entryDate"
           />
           <span class="date-placeholder" *ngIf="!hasEntryDate">Seleccionar fecha</span>
+          <span class="date-display" *ngIf="hasEntryDate">{{ formatDateDisplay(visitor.entryDate) }}</span>
         </div>
       </div>
 
@@ -297,6 +299,7 @@
             name="entryDate"
           />
           <span class="date-placeholder" *ngIf="!hasOneTimeDate">Seleccionar fecha</span>
+          <span class="date-display" *ngIf="hasOneTimeDate">{{ formatDateDisplay(oneTimeData.entryDate) }}</span>
         </div>
       </div>
 
@@ -389,6 +392,7 @@
             name="eventDate"
           />
           <span class="date-placeholder" *ngIf="!hasEventDate">Seleccionar fecha</span>
+          <span class="date-display" *ngIf="hasEventDate">{{ formatDateDisplay(eventData.eventDate) }}</span>
         </div>
       </div>
 
@@ -434,6 +438,51 @@
         </div>
       </div>
 
+      <!-- Location Field -->
+      <div class="form-group">
+        <label class="form-label">Lugar</label>
+        <div class="input-wrapper">
+          <div class="input-icon event-input-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </div>
+          <select
+            class="form-input form-select"
+            [(ngModel)]="eventData.location"
+            name="location"
+            (change)="onLocationChange()"
+          >
+            <option value="">Seleccionar lugar</option>
+            <option *ngFor="let option of locationOptions" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <!-- Mostrar dirección cuando se selecciona "Domicilio" -->
+        <div *ngIf="eventData.location === 'domicilio'" class="address-display">
+          <div *ngIf="loadingAddress" class="address-loading">
+            <span>Cargando dirección...</span>
+          </div>
+          <div *ngIf="!loadingAddress && residentAddress" class="address-info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span class="address-text">{{ residentAddress }}</span>
+          </div>
+          <div *ngIf="!loadingAddress && !residentAddress" class="address-warning">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>No se encontró dirección registrada</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Error Message -->
       <div *ngIf="error" class="error-message">
         {{ error }}
@@ -453,5 +502,100 @@
       
       <button type="button" class="btn-cancel-event" (click)="cancel()">Cancelar</button>
     </form>
+  </div>
+</div>
+
+<!-- Modal QR Code -->
+<div *ngIf="showQRModal" class="qr-modal-overlay" (click)="closeQRModal()">
+  <div class="qr-modal-content" (click)="$event.stopPropagation()">
+    <button class="qr-modal-close" (click)="closeQRModal()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    
+    <div class="qr-modal-header">
+      <h2 class="qr-modal-title">Código QR del Evento</h2>
+      <p class="qr-modal-subtitle">Comparte este código con tus invitados</p>
+    </div>
+
+    <div class="qr-modal-body">
+      <!-- QR Code Image -->
+      <div class="qr-code-container">
+        <img [src]="qrCodeUrl" alt="QR Code del Evento" class="qr-code-image" />
+      </div>
+
+      <!-- Información General del Evento (para compartir con invitados) -->
+      <div class="qr-event-summary" *ngIf="eventQRData">
+        <h3 class="qr-summary-title">Información del Evento</h3>
+        <div class="qr-summary-content">
+          <p class="qr-summary-item">
+            <strong>Evento:</strong> {{ eventQRData.event_name }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.event_date">
+            <strong>Fecha:</strong> {{ formatDate(eventQRData.event_date) }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.event_time">
+            <strong>Hora:</strong> {{ formatTime(eventQRData.event_time) }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.number_of_guests">
+            <strong>Invitados esperados:</strong> {{ eventQRData.number_of_guests }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.resident_name">
+            <strong>Anfitrión:</strong> {{ eventQRData.resident_name }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.event_location === 'domicilio' && eventQRData.resident_address">
+            <strong>Lugar:</strong> {{ eventQRData.resident_address }}
+          </p>
+          <p class="qr-summary-item" *ngIf="eventQRData.event_location && eventQRData.event_location !== 'domicilio'">
+            <strong>Lugar:</strong> {{ getLocationLabel(eventQRData.event_location) }}
+          </p>
+          <p class="qr-summary-item" *ngIf="!eventQRData.event_location">
+            <strong>Lugar:</strong> No especificado
+          </p>
+        </div>
+      </div>
+
+      <!-- Event Information (detallada) -->
+      <div class="qr-event-info" *ngIf="eventQRData">
+        <div class="info-item">
+          <span class="info-label">Evento:</span>
+          <span class="info-value">{{ eventQRData.event_name }}</span>
+        </div>
+        <div class="info-item" *ngIf="eventQRData.event_date">
+          <span class="info-label">Fecha:</span>
+          <span class="info-value">{{ formatDate(eventQRData.event_date) }}</span>
+        </div>
+        <div class="info-item" *ngIf="eventQRData.event_time">
+          <span class="info-label">Hora:</span>
+          <span class="info-value">{{ formatTime(eventQRData.event_time) }}</span>
+        </div>
+        <div class="info-item" *ngIf="eventQRData.number_of_guests">
+          <span class="info-label">Invitados:</span>
+          <span class="info-value">{{ eventQRData.number_of_guests }}</span>
+        </div>
+        <div class="info-item" *ngIf="eventQRData.resident_name">
+          <span class="info-label">Anfitrión:</span>
+          <span class="info-value">{{ eventQRData.resident_name }}</span>
+        </div>
+        <div class="info-item" *ngIf="eventQRData.resident_address">
+          <span class="info-label">Dirección:</span>
+          <span class="info-value">{{ eventQRData.resident_address }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="qr-modal-footer">
+      <button class="btn-download-qr" (click)="downloadQR()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Descargar QR</span>
+      </button>
+      <button class="btn-close-qr" (click)="closeQRModal()">Cerrar</button>
+    </div>
   </div>
 </div>

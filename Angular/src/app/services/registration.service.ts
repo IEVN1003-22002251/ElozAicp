@@ -35,12 +35,12 @@ export class RegistrationService {
     return this.http.post<{ success?: boolean; exito?: boolean; data?: Registration; message?: string; mensaje?: string }>(this.apiUrl, registration);
   }
 
-  approveRegistration(id: string): Observable<{ success: boolean; data: any }> {
-    return this.http.put<{ success: boolean; data: any }>(`${this.apiUrl}/${id}/approve`, {});
+  approveRegistration(id: string): Observable<{ success: boolean; exito?: boolean; mensaje?: string; message?: string; data?: any }> {
+    return this.http.put<{ success: boolean; exito?: boolean; mensaje?: string; message?: string; data?: any }>(`${this.apiUrl}/${id}/approve`, {});
   }
 
-  rejectRegistration(id: string, reason?: string): Observable<{ success: boolean; message: string }> {
-    return this.http.put<{ success: boolean; message: string }>(`${this.apiUrl}/${id}/reject`, { reason });
+  rejectRegistration(id: string, reason?: string): Observable<{ success: boolean; exito?: boolean; mensaje?: string; message?: string }> {
+    return this.http.put<{ success: boolean; exito?: boolean; mensaje?: string; message?: string }>(`${this.apiUrl}/${id}/reject`, { reason });
   }
 
   getRegistrationStats(): Observable<{ success: boolean; data: any }> {
