@@ -2071,49 +2071,48 @@ def send_chat_message():
                     }), 404
                 
                 # Intentar insertar con sender_id y receiver_id primero
+                # IMPORTANTE: También incluir chat_type y fraccionamiento_id para que el residente pueda verlo
                 try:
-                    insert_query = """
-                        INSERT INTO chat_messages (sender_id, receiver_id, message, created_at)
-                        VALUES (%s, %s, %s, NOW())
-                    """
-                    cursor.execute(insert_query, (sender_id, receiver_id, message_text))
+                    chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
+                    fracc_id = sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id')
                     
-                    # También insertar en estructura antigua para compatibilidad
-                    # Esto asegura que el residente pueda ver el mensaje
-                    # IMPORTANTE: Usar el chat_type según el rol del sender
-                    # - admin -> 'administration'
-                    # - guard -> 'security'
+                    # Intentar insertar con todas las columnas disponibles
+                    insert_query = """
+                        INSERT INTO chat_messages (sender_id, receiver_id, fraccionamiento_id, chat_type, user_id, message, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                    """
+                    cursor.execute(insert_query, (sender_id, receiver_id, fracc_id, chat_type_for_message, sender_id, message_text))
+                        
+                except Error as e:
+                    # Si falla, intentar solo con sender_id y receiver_id (sin chat_type)
                     try:
+                        insert_query = """
+                            INSERT INTO chat_messages (sender_id, receiver_id, message, created_at)
+                            VALUES (%s, %s, %s, NOW())
+                        """
+                        cursor.execute(insert_query, (sender_id, receiver_id, message_text))
+                        
+                        # También insertar en estructura antigua para compatibilidad
+                        try:
+                            chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
+                            fracc_id = sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id')
+                            insert_old = """
+                                INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
+                                VALUES (%s, %s, %s, %s, NOW())
+                            """
+                            cursor.execute(insert_old, (fracc_id, chat_type_for_message, sender_id, message_text))
+                        except Error:
+                            pass  # Si falla, no es crítico
+                    except Error as e2:
+                        # Si las columnas sender_id/receiver_id no existen, usar solo estructura antigua
+                        # IMPORTANTE: Guardar con chat_type según el rol del sender
                         chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
-                        insert_old = """
+                        fracc_id = sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id')
+                        insert_query = """
                             INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
                             VALUES (%s, %s, %s, %s, NOW())
                         """
-                        cursor.execute(insert_old, (
-                            sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
-                            chat_type_for_message,
-                            sender_id,
-                            message_text
-                        ))
-                    except Error:
-                        pass  # Si falla, no es crítico
-                        
-                except Error as e:
-                    # Si las columnas no existen o hay error, usar la estructura antigua
-                    # IMPORTANTE: Guardar con chat_type según el rol del sender
-                    # - admin -> 'administration'
-                    # - guard -> 'security'
-                    chat_type_for_message = 'administration' if sender_role == 'admin' else 'security' if sender_role == 'guard' else 'administration'
-                    insert_query = """
-                        INSERT INTO chat_messages (fraccionamiento_id, chat_type, user_id, message, created_at)
-                        VALUES (%s, %s, %s, %s, NOW())
-                    """
-                    cursor.execute(insert_query, (
-                        sender.get('fraccionamiento_id') or receiver.get('fraccionamiento_id'),
-                        chat_type_for_message,
-                        sender_id,
-                        message_text
-                    ))
+                        cursor.execute(insert_query, (fracc_id, chat_type_for_message, sender_id, message_text))
             else:
                 # Mensaje de residente a un tab específico (para que los admins lo vean)
                 # Guardamos el mensaje con chat_type y user_id del residente
@@ -2258,57 +2257,16 @@ def get_chat_messages():
                     if msg.get('id') not in existing_ids:
                         messages.append(msg)
                 
-                # También buscar mensajes enviados por el admin/guard relacionados con este residente
-                # IMPORTANTE: Filtrar según el rol del sender
-                cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (receiver_id,))
-                resident_info = cursor.fetchone()
-                fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
-                
-                if fraccionamiento_id and target_chat_type and sender_role:
-                    query_admin_sent = """
-                        SELECT 
-                            cm.*,
-                            p.name as sender_name,
-                            p.user_name as sender_username
-                        FROM chat_messages cm
-                        LEFT JOIN profiles p ON cm.user_id = p.id
-                        WHERE cm.user_id = %s
-                          AND cm.chat_type = %s
-                          AND p.role = %s
-                          AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
-                        ORDER BY cm.created_at ASC
-                    """
-                    cursor.execute(query_admin_sent, (sender_id, target_chat_type, sender_role, fraccionamiento_id))
-                elif target_chat_type and sender_role:
-                    query_admin_sent = """
-                        SELECT 
-                            cm.*,
-                            p.name as sender_name,
-                            p.user_name as sender_username
-                        FROM chat_messages cm
-                        LEFT JOIN profiles p ON cm.user_id = p.id
-                        WHERE cm.user_id = %s
-                          AND cm.chat_type = %s
-                          AND p.role = %s
-                        ORDER BY cm.created_at ASC
-                    """
-                    cursor.execute(query_admin_sent, (sender_id, target_chat_type, sender_role))
-                else:
-                    admin_sent_messages = []
-                
-                admin_sent_messages = cursor.fetchall() if (target_chat_type and sender_role) else []
-                
-                # Combinar mensajes del admin/guard también
-                existing_ids = {m.get('id') for m in messages}
-                for msg in admin_sent_messages:
-                    if msg.get('id') not in existing_ids:
-                        messages.append(msg)
+                # NO buscar mensajes de admin/guard en la estructura antigua para conversaciones 1 a 1
+                # En conversaciones 1 a 1, solo debemos usar la estructura nueva (sender_id/receiver_id)
+                # para evitar mostrar mensajes de otros residentes del mismo fraccionamiento
+                # Los mensajes de admin/guard ya están incluidos en la búsqueda inicial con sender_id/receiver_id
                 
                 # Ordenar todos los mensajes por fecha después de combinarlos
                 messages.sort(key=lambda x: x.get('created_at') or '1970-01-01 00:00:00')
             elif chat_type and user_id:
                 # Para residentes que usan tabs
-                # Obtener mensajes del residente
+                # Obtener mensajes del residente (estructura antigua: user_id + chat_type)
                 query_resident = """
                     SELECT 
                         cm.*,
@@ -2323,13 +2281,44 @@ def get_chat_messages():
                 cursor.execute(query_resident, (chat_type, user_id))
                 messages = cursor.fetchall()
                 
-                # También obtener mensajes del admin/guard dirigidos a este residente
-                # IMPORTANTE: Filtrar según el chat_type
-                # - chat_type='administration' -> solo mensajes de admin
-                # - chat_type='security' -> solo mensajes de guard
+                # Determinar el rol objetivo para filtrar mensajes de admin/guard
                 target_role = 'admin' if chat_type == 'administration' else 'guard' if chat_type == 'security' else None
                 
-                # Primero intentar con sender_id/receiver_id
+                # NO buscar mensajes de admin/guard en la estructura antigua sin receiver_id
+                # Esto previene que residentes vean mensajes de admin/guard que no fueron dirigidos a ellos
+                # Solo se mostrarán mensajes que:
+                # 1. Fueron enviados por el residente actual (ya obtenidos arriba)
+                # 2. Fueron enviados por admin/guard directamente al residente (obtenidos con receiver_id)
+                # 
+                # Los mensajes de admin/guard en la estructura antigua sin receiver_id específico
+                # no deben mostrarse a todos los residentes, solo a aquellos a quienes fueron dirigidos
+                
+                # También obtener mensajes donde el residente es el receiver_id (estructura nueva)
+                # Esto captura mensajes enviados por admin/guard directamente al residente
+                try:
+                    query_receiver_messages = """
+                        SELECT 
+                            cm.*,
+                            s.name as sender_name,
+                            s.user_name as sender_username
+                        FROM chat_messages cm
+                        LEFT JOIN profiles s ON cm.sender_id = s.id
+                        WHERE cm.receiver_id = %s
+                          AND (cm.chat_type = %s OR cm.chat_type IS NULL)
+                        ORDER BY cm.created_at ASC
+                    """
+                    cursor.execute(query_receiver_messages, (user_id, chat_type))
+                    receiver_messages = cursor.fetchall()
+                    
+                    # Combinar mensajes, evitando duplicados
+                    existing_ids = {m.get('id') for m in messages}
+                    for msg in receiver_messages:
+                        if msg.get('id') not in existing_ids:
+                            messages.append(msg)
+                except Error:
+                    pass  # Si falla, continuar
+                
+                # También buscar mensajes de admin/guard con receiver_id específico (estructura nueva)
                 if target_role:
                     try:
                         query_admin_to_resident = """
@@ -2346,7 +2335,7 @@ def get_chat_messages():
                         cursor.execute(query_admin_to_resident, (user_id, target_role))
                         admin_messages = cursor.fetchall()
                         
-                        # Combinar mensajes
+                        # Combinar mensajes, evitando duplicados
                         existing_ids = {m.get('id') for m in messages}
                         for msg in admin_messages:
                             if msg.get('id') not in existing_ids:
@@ -2354,53 +2343,37 @@ def get_chat_messages():
                     except Error:
                         pass  # Continuar con la búsqueda alternativa
                 
-                # SIEMPRE buscar también mensajes del admin/guard en el mismo fraccionamiento y chat_type
-                # IMPORTANTE: Filtrar según el chat_type
-                # - chat_type='administration' -> solo mensajes de admin
-                # - chat_type='security' -> solo mensajes de guard
-                cursor.execute("SELECT fraccionamiento_id FROM profiles WHERE id = %s", (user_id,))
-                resident_info = cursor.fetchone()
-                fraccionamiento_id = resident_info.get('fraccionamiento_id') if resident_info else None
-                
-                # Determinar qué rol debe ver estos mensajes según el chat_type
-                target_role = 'admin' if chat_type == 'administration' else 'guard' if chat_type == 'security' else None
-                
-                if fraccionamiento_id and target_role:
-                    query_admin_same_fracc = """
+                # También buscar mensajes donde el residente es el sender_id (mensajes enviados por el residente en estructura nueva)
+                try:
+                    query_sender_messages = """
                         SELECT 
                             cm.*,
-                            p.name as sender_name,
-                            p.user_name as sender_username
+                            s.name as sender_name,
+                            s.user_name as sender_username
                         FROM chat_messages cm
-                        LEFT JOIN profiles p ON cm.user_id = p.id
-                        WHERE cm.chat_type = %s
-                          AND (cm.fraccionamiento_id = %s OR cm.fraccionamiento_id IS NULL)
-                          AND p.role = %s
+                        LEFT JOIN profiles s ON cm.sender_id = s.id
+                        WHERE cm.sender_id = %s
                         ORDER BY cm.created_at ASC
                     """
-                    cursor.execute(query_admin_same_fracc, (chat_type, fraccionamiento_id, target_role))
-                elif target_role:
-                    query_admin_same_fracc = """
-                        SELECT 
-                            cm.*,
-                            p.name as sender_name,
-                            p.user_name as sender_username
-                        FROM chat_messages cm
-                        LEFT JOIN profiles p ON cm.user_id = p.id
-                        WHERE cm.chat_type = %s
-                          AND p.role = %s
-                        ORDER BY cm.created_at ASC
-                    """
-                    cursor.execute(query_admin_same_fracc, (chat_type, target_role))
-                else:
-                    # Si no hay target_role, no buscar mensajes de admin/guard
-                    admin_messages = []
+                    cursor.execute(query_sender_messages, (user_id,))
+                    sender_messages = cursor.fetchall()
+                    
+                    # Combinar mensajes, evitando duplicados
+                    existing_ids = {m.get('id') for m in messages}
+                    for msg in sender_messages:
+                        if msg.get('id') not in existing_ids:
+                            messages.append(msg)
+                except Error:
+                    pass  # Si falla, continuar
                 
-                admin_messages = cursor.fetchall() if target_role else []
-                existing_ids = {m.get('id') for m in messages}
-                for msg in admin_messages:
-                    if msg.get('id') not in existing_ids:
-                        messages.append(msg)
+                # NO buscar mensajes de admin/guard en el mismo fraccionamiento sin receiver_id
+                # Esto previene que residentes vean mensajes de admin/guard que no fueron dirigidos a ellos
+                # Solo se mostrarán mensajes que:
+                # 1. Fueron enviados por el residente actual (ya obtenidos arriba)
+                # 2. Fueron enviados por admin/guard directamente al residente (obtenidos arriba con receiver_id)
+                # 
+                # Los mensajes de admin/guard en el mismo fraccionamiento sin receiver_id específico
+                # no deben mostrarse a todos los residentes, solo a aquellos a quienes fueron dirigidos
                 
                 # Ordenar todos los mensajes por fecha
                 messages.sort(key=lambda x: x.get('created_at') or '1970-01-01 00:00:00')
@@ -2445,10 +2418,17 @@ def get_chat_messages():
                 current_user_id = int(sender_id)
             elif user_id and str(user_id).isdigit():
                 current_user_id = int(user_id)
+            elif receiver_id and str(receiver_id).isdigit():
+                # Si hay receiver_id, ese es el usuario actual (para conversaciones 1 a 1)
+                current_user_id = int(receiver_id)
             
             for msg in messages:
                 # Obtener el ID del remitente del mensaje
-                msg_sender_id = msg.get('sender_id') or msg.get('user_id')
+                # Priorizar sender_id sobre user_id para mensajes 1 a 1
+                msg_sender_id = msg.get('sender_id')
+                if not msg_sender_id:
+                    msg_sender_id = msg.get('user_id')
+                
                 if msg_sender_id:
                     try:
                         msg_sender_id = int(msg_sender_id)
@@ -2462,6 +2442,18 @@ def get_chat_messages():
                         is_sent = int(msg_sender_id) == int(current_user_id)
                     except (ValueError, TypeError):
                         is_sent = False
+                
+                # Si el mensaje tiene receiver_id, verificar que sea para el usuario actual
+                # Esto previene que residentes vean mensajes de otros residentes como propios
+                msg_receiver_id = msg.get('receiver_id')
+                if msg_receiver_id and current_user_id:
+                    try:
+                        msg_receiver_id = int(msg_receiver_id)
+                        # Si el mensaje tiene un receiver_id y no es el usuario actual, no debería marcarse como enviado
+                        if msg_receiver_id != current_user_id and msg_sender_id != current_user_id:
+                            is_sent = False
+                    except (ValueError, TypeError):
+                        pass
                 
                 # Formatear fecha
                 created_at = msg.get('created_at')
