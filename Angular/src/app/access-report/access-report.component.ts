@@ -554,7 +554,7 @@ export class AccessReportComponent implements OnInit {
           color: '#ffffff',
           font: {
             size: 12,
-            weight: 500
+            weight: '500'
           },
           padding: 15,
           usePointStyle: true,
