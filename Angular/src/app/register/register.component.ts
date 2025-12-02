@@ -69,61 +69,33 @@ export class RegisterComponent {
   }
 
   submitRegistration(): void {
-    if (this.loading) {
-      console.log('Ya se está procesando una solicitud');
-      return;
-    }
-
-    // Validar que los campos requeridos estén llenos
+    if (this.loading) return;
     if (!this.formData.street || !this.formData.house_number) {
       this.error = 'Por favor completa todos los campos de dirección';
       return;
     }
-
     if (!this.formData.fraccionamiento_id) {
       this.error = 'Por favor selecciona un fraccionamiento';
       return;
     }
-
-    console.log('Enviando registro con datos:', {
-      ...this.formData,
-      password: '***' // No mostrar la contraseña en el log
-    });
-
     this.loading = true;
     this.error = '';
-
     const registrationData = {
-      full_name: this.formData.full_name,
-      user_name: this.formData.user_name,
-      email: this.formData.email,
-      password: this.formData.password,
-      role: 'resident',
-      fraccionamiento_id: this.formData.fraccionamiento_id,
-      status: 'pending',
-      phone: this.formData.phone || null,
-      street: this.formData.street,
-      house_number: this.formData.house_number
+      full_name: this.formData.full_name, user_name: this.formData.user_name,
+      email: this.formData.email, password: this.formData.password, role: 'resident',
+      fraccionamiento_id: this.formData.fraccionamiento_id, status: 'pending',
+      phone: this.formData.phone || null, street: this.formData.street, house_number: this.formData.house_number
     };
-
-    console.log('Datos a enviar:', registrationData);
-
     this.registrationService.createRegistration(registrationData).subscribe({
-      next: (response) => {
-        console.log('Respuesta del servidor:', response);
-        if (response.success || response.exito) {
-          // Redirigir a una página de confirmación o al login
-          this.router.navigate(['/auth/sing-in'], {
-            queryParams: { registered: 'true' }
-          });
+      next: (res) => {
+        if (res.success || res.exito) {
+          this.router.navigate(['/auth/sing-in'], { queryParams: { registered: 'true' } });
         } else {
-          this.error = response.message || response.mensaje || 'Error al enviar la solicitud';
+          this.error = res.message || res.mensaje || 'Error al enviar la solicitud';
           this.loading = false;
-          console.error('Error en la respuesta:', response);
         }
       },
       error: (err) => {
-        console.error('Error al enviar registro:', err);
         this.error = err.error?.message || err.error?.mensaje || err.error?.error || 'Error al conectar con el servidor';
         this.loading = false;
       }

@@ -3,9 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class HistoryService {
   private apiUrl = `${environment.apiUrl}/history`;
 
@@ -13,15 +11,8 @@ export class HistoryService {
 
   getHistory(userId?: string, fraccionamientoId?: string): Observable<any> {
     let httpParams = new HttpParams();
-    
-    if (userId) {
-      httpParams = httpParams.set('user_id', userId);
-    }
-    
-    if (fraccionamientoId) {
-      httpParams = httpParams.set('fraccionamiento_id', fraccionamientoId);
-    }
-
+    if (userId) httpParams = httpParams.set('user_id', userId);
+    if (fraccionamientoId) httpParams = httpParams.set('fraccionamiento_id', fraccionamientoId);
     return this.http.get<any>(this.apiUrl, { params: httpParams });
   }
 
@@ -29,10 +20,6 @@ export class HistoryService {
     return this.http.get<any>(`${this.apiUrl}?user_id=${userId}`);
   }
 }
-
-
-
-
 
 
 

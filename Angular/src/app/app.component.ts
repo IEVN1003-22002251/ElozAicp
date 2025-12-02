@@ -6,17 +6,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, RouterOutlet],
-  template: `
-    <div class="app-container">
-      <router-outlet></router-outlet>
-    </div>
-  `,
-  styles: [`
-    .app-container {
-      min-height: 100vh;
-      background-color: #1a1a1a;
-    }
-  `]
+  template: `<div class="app-container"><router-outlet></router-outlet></div>`,
+  styles: [`.app-container { min-height: 100vh; background-color: #1a1a1a; }`]
 })
 export class AppComponent {
   title = 'AICP';

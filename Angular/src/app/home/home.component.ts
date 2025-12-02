@@ -173,483 +173,21 @@ import { environment } from '../../environments/environment';
       </nav>
     </div>
   `,
-  styles: [`
-    .home-container {
-      min-height: 100vh;
-      background-color: #1a1a2e;
-      padding-bottom: 80px;
-    }
-
-    /* Header Section */
-    .header-section {
-      padding: 16px 20px;
-    }
-
-    .user-info-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 16px;
-    }
-
-    .user-details {
-      flex: 1;
-    }
-
-    .username {
-      display: block;
-      font-size: 18px;
-      font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 4px;
-    }
-
-    .location-info {
-      display: flex;
-      align-items: center;
-      margin-top: 4px;
-    }
-
-    .location-value {
-      font-size: 14px;
-      font-weight: 400;
-      color: rgba(255, 255, 255, 0.8);
-      line-height: 1.4;
-    }
-
-    .logo-header {
-      flex-shrink: 0;
-    }
-
-    .eloz-logo {
-      height: 40px;
-      width: auto;
-      filter: brightness(0) invert(1);
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 12px;
-      position: relative;
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .btn-visitors {
-      flex: 0 0 auto;
-      width: 60px;
-      max-width: 50%;
-      background-color: #dc3545 !important;
-      border: none;
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      transform-origin: right center;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .btn-visitors:hover {
-      width: 50%;
-      flex: 1;
-      transform: scaleX(1);
-    }
-
-    .btn-visitors:not(.active) {
-      background-color: #dc3545 !important;
-    }
-
-    .btn-visitors:not(.active):hover {
-      background-color: #c82333 !important;
-    }
-
-    .btn-visitors.active {
-      background-color: #20b2aa !important;
-    }
-
-    .btn-visitors.active:hover {
-      background-color: #1a9d96 !important;
-    }
-
-    .btn-visitors span {
-      white-space: nowrap;
-      opacity: 0;
-      width: 0;
-      overflow: hidden;
-      transition: opacity 0.3s ease 0.1s, width 0.3s ease 0.1s;
-      pointer-events: none;
-    }
-
-    .btn-visitors:hover span {
-      opacity: 1;
-      width: auto;
-    }
-
-    .btn-personnel {
-      flex: 0 0 auto;
-      width: 60px;
-      max-width: 50%;
-      background-color: #dc3545 !important;
-      border: none;
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      transform-origin: left center;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .btn-personnel:hover {
-      width: 50%;
-      flex: 1;
-      transform: scaleX(1);
-    }
-
-    .btn-personnel:not(.active) {
-      background-color: #dc3545 !important;
-    }
-
-    .btn-personnel:not(.active):hover {
-      background-color: #c82333 !important;
-    }
-
-    .btn-personnel.active {
-      background-color: #20b2aa !important;
-    }
-
-    .btn-personnel.active:hover {
-      background-color: #1a9d96 !important;
-    }
-
-    .btn-personnel span {
-      white-space: nowrap;
-      opacity: 0;
-      width: 0;
-      overflow: hidden;
-      transition: opacity 0.3s ease 0.1s, width 0.3s ease 0.1s;
-      pointer-events: none;
-    }
-
-    .btn-personnel:hover span {
-      opacity: 1;
-      width: auto;
-    }
-
-    /* Main Content */
-    .main-content {
-      padding: 0 20px 20px;
-    }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .function-card {
-      background-color: #16213e;
-      border-radius: 16px;
-      padding: 20px;
-      cursor: pointer;
-      transition: transform 0.2s ease, background-color 0.2s ease;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .function-card:hover {
-      transform: translateY(-4px);
-      background-color: #1e2a42;
-    }
-
-    .card-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 12px;
-    }
-
-    .card-icon.blue {
-      background-color: rgba(100, 181, 246, 0.2);
-      color: #64b5f6;
-    }
-
-    .card-icon.green {
-      background-color: rgba(76, 175, 80, 0.2);
-      color: #4caf50;
-    }
-
-    .card-icon.yellow {
-      background-color: rgba(255, 193, 7, 0.2);
-      color: #ffc107;
-    }
-
-    .card-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 4px;
-    }
-
-    .card-subtitle {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    /* Emergency Button */
-    .emergency-section {
-      margin-top: 24px;
-      display: flex;
-      justify-content: center;
-      padding: 0 20px;
-    }
-
-    .emergency-btn {
-      width: 100%;
-      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-      border: none;
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 18px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-    }
-
-    .emergency-btn:hover:not(.disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(220, 53, 69, 0.6);
-    }
-
-    .emergency-btn.pressing {
-      background: linear-gradient(135deg, #ff4757 0%, #dc3545 100%);
-      transform: scale(0.98);
-      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.5);
-    }
-
-    .emergency-btn.disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .emergency-icon {
-      width: 64px;
-      height: 64px;
-      background-color: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: pulse 2s infinite;
-    }
-
-    .emergency-btn.pressing .emergency-icon {
-      animation: pulse 0.5s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: scale(1.1);
-        opacity: 0.8;
-      }
-    }
-
-    .emergency-text {
-      font-size: 14px;
-      font-weight: 500;
-      opacity: 0.9;
-    }
-
-    .emergency-progress {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 4px;
-      background-color: rgba(255, 255, 255, 0.8);
-      transition: width 0.05s linear;
-      border-radius: 0 0 16px 16px;
-    }
-
-    /* Promotional Banner */
-    .promo-banner {
-      background-color: #2a2a2a;
-      border-left: 4px solid #ff9800;
-      border-radius: 12px;
-      padding: 16px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    .promo-banner:hover {
-      background-color: #333333;
-    }
-
-    .banner-content {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-
-    .banner-icon {
-      color: #ff9800;
-      flex-shrink: 0;
-    }
-
-    .banner-text {
-      flex: 1;
-    }
-
-    .banner-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .banner-header h4 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #ffffff;
-      margin: 0;
-    }
-
-    .ad-tag {
-      background-color: #ff9800;
-      color: #1a1a1a;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 12px;
-      text-transform: uppercase;
-    }
-
-    .banner-description {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 8px;
-      line-height: 1.4;
-    }
-
-    .banner-cta {
-      font-size: 14px;
-      color: #ff9800;
-      font-weight: 600;
-    }
-
-    /* Bottom Navigation */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background-color: #2a2a2a;
-      display: flex;
-      justify-content: space-around;
-      padding: 12px 0;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      z-index: 100;
-    }
-
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      color: rgba(255, 255, 255, 0.6);
-      cursor: pointer;
-      transition: color 0.3s ease;
-      padding: 4px 16px;
-    }
-
-    .nav-item.active {
-      color: #007bff;
-    }
-
-    .nav-item:hover {
-      color: #ffffff;
-    }
-
-    .nav-item span {
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    @media (max-width: 480px) {
-      .cards-grid {
-        gap: 12px;
-      }
-
-      .function-card {
-        padding: 16px;
-      }
-
-      .card-icon {
-        width: 56px;
-        height: 56px;
-      }
-
-      .card-title {
-        font-size: 14px;
-      }
-
-      .card-subtitle {
-        font-size: 11px;
-      }
-    }
-  `]
+  styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit, OnDestroy {
   profile: any = null;
-  isPersonnelActive: boolean = true;
-  isVisitorsActive: boolean = false;
-  
-  // Emergency button state
-  isPressingEmergency: boolean = false;
-  isEmergencyDisabled: boolean = false;
-  emergencyProgress: number = 0;
+  isPersonnelActive = true;
+  isVisitorsActive = false;
+  isPressingEmergency = false;
+  isEmergencyDisabled = false;
+  emergencyProgress = 0;
   private emergencyPressInterval: any = null;
-  private emergencyPressStartTime: number = 0;
-  private readonly EMERGENCY_PRESS_DURATION = 3000; // 3 segundos
+  private emergencyPressStartTime = 0;
+  private readonly EMERGENCY_PRESS_DURATION = 3000;
 
-  // Método para debug - verificar estado actual
   getButtonStates() {
-    return {
-      visitors: this.isVisitorsActive,
-      personnel: this.isPersonnelActive
-    };
+    return { visitors: this.isVisitorsActive, personnel: this.isPersonnelActive };
   }
 
   constructor(
@@ -661,130 +199,64 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.profile = this.authService.getCachedProfile();
-    
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/auth/sing-in']);
       return;
     }
-
-    // Recargar el perfil desde el backend para obtener información actualizada
     const currentUser = this.authService.getCurrentUser();
     if (currentUser?.id) {
       this.authService.getProfile(currentUser.id).subscribe({
-        next: (response) => {
-          if (response.exito && response.profile) {
-            this.profile = response.profile;
-            // Actualizar el cache con el perfil actualizado
-            localStorage.setItem('profile', JSON.stringify(response.profile));
+        next: (res) => {
+          if (res.exito && res.profile) {
+            this.profile = res.profile;
+            localStorage.setItem('profile', JSON.stringify(res.profile));
           }
         },
-        error: (error) => {
-          console.error('Error al cargar el perfil:', error);
-        }
+        error: (err) => console.error('Error al cargar el perfil:', err)
       });
-
-      // Cargar las preferencias del residente desde la BD
       this.loadPreferences(currentUser.id);
     }
   }
 
-  /**
-   * Carga las preferencias del residente desde la base de datos
-   */
   loadPreferences(userId: string): void {
-    console.log('Cargando preferencias para usuario:', userId);
     this.preferenceService.getPreferences(userId).subscribe({
-      next: (response) => {
-        console.log('Respuesta al cargar preferencias:', response);
-        if (response.exito || response.success) {
-          const preferences = response.data || response.preferences || response;
-          if (preferences) {
-            this.isVisitorsActive = preferences.accepts_visitors === true || preferences.accepts_visitors === 1;
-            this.isPersonnelActive = preferences.accepts_personnel === true || preferences.accepts_personnel === 1;
-            console.log('Preferencias cargadas:', {
-              visits: this.isVisitorsActive,
-              personnel: this.isPersonnelActive
-            });
+      next: (res) => {
+        if (res.exito || res.success) {
+          const prefs = res.data || res.preferences || res;
+          if (prefs) {
+            this.isVisitorsActive = prefs.accepts_visitors === true || prefs.accepts_visitors === 1;
+            this.isPersonnelActive = prefs.accepts_personnel === true || prefs.accepts_personnel === 1;
           }
-        } else {
-          console.log('No se encontraron preferencias, usando valores por defecto');
         }
       },
-      error: (error) => {
-        console.warn('⚠️ Error al cargar preferencias (usando valores por defecto):', error);
-        // Si no existen preferencias o hay error, usar valores por defecto
-        // Los valores por defecto ya están establecidos en las propiedades
-        console.log('Valores por defecto:', {
-          visits: this.isVisitorsActive,
-          personnel: this.isPersonnelActive
-        });
-      }
+      error: () => {}
     });
   }
 
   togglePersonnel(): void {
-    console.log('Toggle PERSONAL - Estado anterior:', this.isPersonnelActive);
     this.isPersonnelActive = !this.isPersonnelActive;
-    console.log('Toggle PERSONAL - Estado nuevo:', this.isPersonnelActive);
     this.savePreferenceToDatabase('personnel', this.isPersonnelActive);
   }
 
   toggleVisitors(): void {
-    console.log('Toggle VISITAS - Estado anterior:', this.isVisitorsActive);
     this.isVisitorsActive = !this.isVisitorsActive;
-    console.log('Toggle VISITAS - Estado nuevo:', this.isVisitorsActive);
     this.savePreferenceToDatabase('visitors', this.isVisitorsActive);
   }
 
-  /**
-   * Guarda la preferencia del residente en la base de datos
-   */
   private savePreferenceToDatabase(type: 'visitors' | 'personnel', value: boolean): void {
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser?.id) {
-      console.error('No se puede guardar la preferencia: usuario no autenticado');
-      return;
-    }
-
-    const userId = currentUser.id;
-    console.log(`Guardando preferencia ${type} para usuario ${userId}:`, value);
-    
-    if (type === 'visitors') {
-      this.preferenceService.updateVisitorPreference(userId, value).subscribe({
-        next: (response) => {
-          console.log('Respuesta del servidor (visitas):', response);
-          if (response.exito || response.success) {
-            console.log('✅ Preferencia de visitas actualizada correctamente:', value);
-          } else {
-            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
-            // No revertir, mantener el cambio visual aunque el backend no responda correctamente
-          }
-        },
-        error: (error) => {
-          console.error('❌ Error al guardar preferencia de visitas:', error);
-          console.error('Detalles del error:', error.error || error.message);
-          // NO revertir el cambio - mantener el estado visual aunque falle el backend
-          // Esto permite que funcione en modo offline o si el backend no está disponible
+    const userId = this.authService.getCurrentUser()?.id;
+    if (!userId) return;
+    const service = type === 'visitors'
+      ? this.preferenceService.updateVisitorPreference(userId, value)
+      : this.preferenceService.updatePersonnelPreference(userId, value);
+    service.subscribe({
+      next: (res) => {
+        if (!(res.exito || res.success)) {
+          console.warn('Respuesta del servidor sin éxito:', res.mensaje || res.message);
         }
-      });
-    } else if (type === 'personnel') {
-      this.preferenceService.updatePersonnelPreference(userId, value).subscribe({
-        next: (response) => {
-          console.log('Respuesta del servidor (personal):', response);
-          if (response.exito || response.success) {
-            console.log('✅ Preferencia de personal actualizada correctamente:', value);
-          } else {
-            console.warn('⚠️ Respuesta del servidor sin éxito:', response.mensaje || response.message);
-            // No revertir, mantener el cambio visual
-          }
-        },
-        error: (error) => {
-          console.error('❌ Error al guardar preferencia de personal:', error);
-          console.error('Detalles del error:', error.error || error.message);
-          // NO revertir el cambio - mantener el estado visual aunque falle el backend
-        }
-      });
-    }
+      },
+      error: (err) => console.error('Error al guardar preferencia:', err)
+    });
   }
 
   navigateTo(route: string): void {
@@ -793,15 +265,12 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   startEmergencyPress(): void {
     if (this.isEmergencyDisabled) return;
-    
     this.isPressingEmergency = true;
     this.emergencyPressStartTime = Date.now();
     this.emergencyProgress = 0;
-    
     this.emergencyPressInterval = setInterval(() => {
       const elapsed = Date.now() - this.emergencyPressStartTime;
       this.emergencyProgress = Math.min((elapsed / this.EMERGENCY_PRESS_DURATION) * 100, 100);
-      
       if (elapsed >= this.EMERGENCY_PRESS_DURATION) {
         this.triggerEmergency();
         this.stopEmergencyPress();
@@ -820,30 +289,18 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   triggerEmergency(): void {
     if (this.isEmergencyDisabled || !this.profile?.id) return;
-    
     this.isEmergencyDisabled = true;
-    
-    this.http.post<any>(`${environment.apiUrl}/emergency/alert`, {
-      resident_id: this.profile.id
-    }).subscribe({
-      next: (response) => {
-        if (response.success || response.exito) {
-          alert('🚨 Alerta de emergencia enviada. Los guardias han sido notificados.');
-        } else {
-          alert('Error al enviar la alerta. Por favor intenta nuevamente.');
-        }
-        // Habilitar el botón después de 5 segundos
-        setTimeout(() => {
-          this.isEmergencyDisabled = false;
-        }, 5000);
+    this.http.post<any>(`${environment.apiUrl}/emergency/alert`, { resident_id: this.profile.id }).subscribe({
+      next: (res) => {
+        alert((res.success || res.exito)
+          ? '🚨 Alerta de emergencia enviada. Los guardias han sido notificados.'
+          : 'Error al enviar la alerta. Por favor intenta nuevamente.');
+        setTimeout(() => this.isEmergencyDisabled = false, 5000);
       },
-      error: (error) => {
-        console.error('Error al enviar alerta de emergencia:', error);
+      error: (err) => {
+        console.error('Error al enviar alerta de emergencia:', err);
         alert('Error al enviar la alerta. Por favor intenta nuevamente.');
-        // Habilitar el botón después de 5 segundos
-        setTimeout(() => {
-          this.isEmergencyDisabled = false;
-        }, 5000);
+        setTimeout(() => this.isEmergencyDisabled = false, 5000);
       }
     });
   }

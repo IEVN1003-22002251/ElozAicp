@@ -4,20 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface Registration {
-  id?: string;
-  full_name: string;
-  user_name: string;
-  email: string;
-  password: string;
-  role: string;
-  fraccionamiento_id?: string;
-  status: string;
-  [key: string]: any;
+  id?: string; full_name: string; user_name: string; email: string; password: string;
+  role: string; fraccionamiento_id?: string; status: string; [key: string]: any;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class RegistrationService {
   private apiUrl = `${environment.apiUrl}/registrations`;
 
@@ -31,16 +22,16 @@ export class RegistrationService {
     return this.http.get<{ success: boolean; data: Registration }>(`${this.apiUrl}/${id}`);
   }
 
-  createRegistration(registration: Registration): Observable<{ success?: boolean; exito?: boolean; data?: Registration; message?: string; mensaje?: string }> {
-    return this.http.post<{ success?: boolean; exito?: boolean; data?: Registration; message?: string; mensaje?: string }>(this.apiUrl, registration);
+  createRegistration(registration: Registration): Observable<any> {
+    return this.http.post<any>(this.apiUrl, registration);
   }
 
-  approveRegistration(id: string): Observable<{ success: boolean; exito?: boolean; mensaje?: string; message?: string; data?: any }> {
-    return this.http.put<{ success: boolean; exito?: boolean; mensaje?: string; message?: string; data?: any }>(`${this.apiUrl}/${id}/approve`, {});
+  approveRegistration(id: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/approve`, {});
   }
 
-  rejectRegistration(id: string, reason?: string): Observable<{ success: boolean; exito?: boolean; mensaje?: string; message?: string }> {
-    return this.http.put<{ success: boolean; exito?: boolean; mensaje?: string; message?: string }>(`${this.apiUrl}/${id}/reject`, { reason });
+  rejectRegistration(id: string, reason?: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/reject`, { reason });
   }
 
   getRegistrationStats(): Observable<{ success: boolean; data: any }> {

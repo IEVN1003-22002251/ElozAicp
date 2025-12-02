@@ -59,16 +59,11 @@ export class NotificationsComponent implements OnInit {
   }
 
   applyFilter(): void {
-    switch (this.filter) {
-      case 'unread':
-        this.filteredNotifications = this.notifications.filter(n => !n.is_read);
-        break;
-      case 'read':
-        this.filteredNotifications = this.notifications.filter(n => n.is_read);
-        break;
-      default:
-        this.filteredNotifications = this.notifications;
-    }
+    this.filteredNotifications = this.filter === 'unread'
+      ? this.notifications.filter(n => !n.is_read)
+      : this.filter === 'read'
+      ? this.notifications.filter(n => n.is_read)
+      : this.notifications;
   }
 
   markAsRead(id: string): void {
@@ -125,21 +120,16 @@ export class NotificationsComponent implements OnInit {
   }
 
   getIconClass(type: string): string {
-    const iconMap: any = {
-      'info': 'info',
-      'success': 'success',
-      'warning': 'warning',
-      'error': 'error'
-    };
+    const iconMap: { [key: string]: string } = { info: 'info', success: 'success', warning: 'warning', error: 'error' };
     return iconMap[type] || 'info';
   }
 
   getIconPath(type: string): string {
-    const pathMap: any = {
-      'info': 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
-      'success': 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
-      'warning': 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
-      'error': 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'
+    const pathMap: { [key: string]: string } = {
+      info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+      success: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+      warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+      error: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'
     };
     return pathMap[type] || pathMap['info'];
   }
@@ -152,7 +142,6 @@ export class NotificationsComponent implements OnInit {
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-
     if (minutes < 1) return 'Ahora';
     if (minutes < 60) return `Hace ${minutes} min`;
     if (hours < 24) return `Hace ${hours} h`;
@@ -162,20 +151,10 @@ export class NotificationsComponent implements OnInit {
 
   deleteAllNotifications(): void {
     if (!confirm('¿Estás seguro de eliminar todas las notificaciones?')) return;
-
     this.loading = true;
     const user = this.authService.getCurrentUser();
-    if (!user) {
-      this.loading = false;
-      return;
-    }
-
-    // Eliminar todas las notificaciones una por una
-    const deletePromises = this.filteredNotifications.map(notification =>
-      this.http.delete<any>(`${environment.apiUrl}/notifications/${notification.id}`).toPromise()
-    );
-
-    Promise.all(deletePromises)
+    if (!user) { this.loading = false; return; }
+    Promise.all(this.filteredNotifications.map(n => this.http.delete<any>(`${environment.apiUrl}/notifications/${n.id}`).toPromise()))
       .then(() => {
         this.notifications = [];
         this.filteredNotifications = [];

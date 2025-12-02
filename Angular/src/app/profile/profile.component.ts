@@ -13,9 +13,9 @@ import { AuthService } from '../services/auth.service';
 export class ProfileComponent implements OnInit {
   profile: any = null;
   profileImage: string | null = null;
-  memberSince: string = '';
-  licenseExpires: string = '';
-  remainingDays: number = 0;
+  memberSince = '';
+  licenseExpires = '';
+  remainingDays = 0;
 
   constructor(
     private authService: AuthService,
@@ -23,81 +23,33 @@ export class ProfileComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Verificar autenticación primero
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/auth/sing-in']);
       return;
     }
-
-    // Obtener perfil (puede ser null pero el usuario está autenticado)
-    this.profile = this.authService.getCachedProfile();
-    
-    // Si no hay perfil, usar valores por defecto
-    if (!this.profile) {
-      this.profile = {
-        name: 'Usuario',
-        user_name: 'Usuario',
-        email: '',
-        phone: '',
-        fraccionamiento_name: 'Villas 123'
-      };
-    }
-
-    // Calcular fecha de membresía (usando created_at del perfil si existe, sino fecha actual)
-    if (this.profile?.created_at) {
-      const memberDate = new Date(this.profile.created_at);
-      const year = memberDate.getFullYear();
-      const month = String(memberDate.getMonth() + 1).padStart(2, '0');
-      const day = String(memberDate.getDate()).padStart(2, '0');
-      this.memberSince = `${year}-${month}-${day}`;
-    } else {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      this.memberSince = `${year}-${month}-${day}`;
-    }
-
-    // Calcular fecha de expiración de licencia (45 días desde hoy por defecto)
+    this.profile = this.authService.getCachedProfile() || {
+      name: 'Usuario', user_name: 'Usuario', email: '', phone: '', fraccionamiento_name: 'Villas 123'
+    };
+    const memberDate = this.profile?.created_at ? new Date(this.profile.created_at) : new Date();
+    this.memberSince = `${memberDate.getFullYear()}-${String(memberDate.getMonth() + 1).padStart(2, '0')}-${String(memberDate.getDate()).padStart(2, '0')}`;
     const expirationDate = new Date();
     expirationDate.setDate(expirationDate.getDate() + 45);
-    this.licenseExpires = expirationDate.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-
-    // Calcular días restantes
-    const today = new Date();
-    const diffTime = expirationDate.getTime() - today.getTime();
-    this.remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    // Si hay una imagen de perfil guardada
+    this.licenseExpires = expirationDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    this.remainingDays = Math.ceil((expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     const savedImage = localStorage.getItem('profileImage');
-    if (savedImage) {
-      this.profileImage = savedImage;
-    }
+    if (savedImage) this.profileImage = savedImage;
   }
 
   goBack(): void {
-    // Verificar si el usuario es admin o residente
     const isAdmin = this.profile?.role === 'admin';
-    
-    // Si es admin, regresar al dashboard; si es residente, regresar al home
-    if (isAdmin) {
-      this.router.navigate(['/dashboard']);
-    } else {
-      this.router.navigate(['/home']);
-    }
+    this.router.navigate([isAdmin ? '/dashboard' : '/home']);
   }
 
   openSettings(): void {
-    // TODO: Implementar vista de configuración
     console.log('Abrir configuración');
   }
 
   changePhoto(): void {
-    // TODO: Implementar cambio de foto de perfil
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -120,5 +72,14 @@ export class ProfileComponent implements OnInit {
       this.authService.logout();
       this.router.navigate(['/auth/sing-in']);
     }
+  }
+
+  getResidentAddress(): string {
+    if (!this.profile) return '';
+    if (this.profile.address) return this.profile.address;
+    const addressParts: string[] = [];
+    if (this.profile.street) addressParts.push(this.profile.street);
+    if (this.profile.house_number) addressParts.push(`Casa ${this.profile.house_number}`);
+    return addressParts.length > 0 ? addressParts.join(', ') : (this.profile.fraccionamiento_name || 'Villas 123');
   }
 }

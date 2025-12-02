@@ -21,26 +21,21 @@ export class QrAccessComponent implements OnInit {
 
   ngOnInit(): void {
     this.profile = this.authService.getCachedProfile();
-    
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/auth/sing-in']);
       return;
     }
-
     const currentUser = this.authService.getCurrentUser();
     if (currentUser?.id) {
       this.authService.getProfile(currentUser.id).subscribe({
-        next: (response) => {
-          if (response.exito && response.profile) {
-            this.profile = response.profile;
-            localStorage.setItem('profile', JSON.stringify(response.profile));
+        next: (res) => {
+          if (res.exito && res.profile) {
+            this.profile = res.profile;
+            localStorage.setItem('profile', JSON.stringify(res.profile));
           }
           this.generateQRCode();
         },
-        error: (error) => {
-          console.error('Error al cargar perfil:', error);
-          this.generateQRCode();
-        }
+        error: () => this.generateQRCode()
       });
     } else {
       this.generateQRCode();
@@ -49,23 +44,11 @@ export class QrAccessComponent implements OnInit {
 
   generateQRCode(): void {
     const userId = this.profile?.id || this.authService.getCurrentUser()?.id;
-    
     if (!userId) {
-      console.error('No se pudo obtener el ID del usuario para generar el QR');
       this.qrCodeUrl = '';
       return;
     }
-
-    const qrDataObject = {
-      't': 'resident',
-      'id': userId
-    };
-
-    const qrDataString = JSON.stringify(qrDataObject);
-    
-    console.log('Generando QR único para residente ID:', userId);
-    console.log('Datos del QR (formato simplificado):', qrDataObject);
-
+    const qrDataString = JSON.stringify({ t: 'resident', id: userId });
     this.qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrDataString)}`;
   }
 
@@ -74,28 +57,11 @@ export class QrAccessComponent implements OnInit {
   }
 
   getResidentAddress(): string {
-    if (!this.profile) {
-      return '';
-    }
-
-    if (this.profile.address) {
-      return this.profile.address;
-    }
-
+    if (!this.profile) return '';
+    if (this.profile.address) return this.profile.address;
     const addressParts: string[] = [];
-    
-    if (this.profile.street) {
-      addressParts.push(this.profile.street);
-    }
-    
-    if (this.profile.house_number) {
-      addressParts.push(`Casa ${this.profile.house_number}`);
-    }
-
-    if (addressParts.length > 0) {
-      return addressParts.join(', ');
-    }
-
-    return '';
+    if (this.profile.street) addressParts.push(this.profile.street);
+    if (this.profile.house_number) addressParts.push(`Casa ${this.profile.house_number}`);
+    return addressParts.length > 0 ? addressParts.join(', ') : '';
   }
 }

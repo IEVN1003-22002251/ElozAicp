@@ -74,60 +74,26 @@ export class GuardDashboardComponent implements OnInit, OnDestroy {
 
   playEmergencySound(): void {
     try {
-      // Crear un sonido de alerta usando Web Audio API
       if (!this.audioContext) {
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-      
-      // Crear un sonido de sirena/alert
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      // Configurar el sonido de alerta (tono agudo que sube y baja)
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.1);
-      oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 0.2);
-      
-      // Repetir el sonido 3 veces
-      setTimeout(() => {
-        const oscillator2 = this.audioContext!.createOscillator();
-        const gainNode2 = this.audioContext!.createGain();
-        oscillator2.connect(gainNode2);
-        gainNode2.connect(this.audioContext!.destination);
-        oscillator2.type = 'sine';
-        oscillator2.frequency.setValueAtTime(800, this.audioContext!.currentTime);
-        oscillator2.frequency.exponentialRampToValueAtTime(1200, this.audioContext!.currentTime + 0.1);
-        oscillator2.frequency.exponentialRampToValueAtTime(800, this.audioContext!.currentTime + 0.2);
-        gainNode2.gain.setValueAtTime(0.3, this.audioContext!.currentTime);
-        gainNode2.gain.exponentialRampToValueAtTime(0.01, this.audioContext!.currentTime + 0.2);
-        oscillator2.start(this.audioContext!.currentTime);
-        oscillator2.stop(this.audioContext!.currentTime + 0.2);
-      }, 300);
-      
-      setTimeout(() => {
-        const oscillator3 = this.audioContext!.createOscillator();
-        const gainNode3 = this.audioContext!.createGain();
-        oscillator3.connect(gainNode3);
-        gainNode3.connect(this.audioContext!.destination);
-        oscillator3.type = 'sine';
-        oscillator3.frequency.setValueAtTime(800, this.audioContext!.currentTime);
-        oscillator3.frequency.exponentialRampToValueAtTime(1200, this.audioContext!.currentTime + 0.1);
-        oscillator3.frequency.exponentialRampToValueAtTime(800, this.audioContext!.currentTime + 0.2);
-        gainNode3.gain.setValueAtTime(0.3, this.audioContext!.currentTime);
-        gainNode3.gain.exponentialRampToValueAtTime(0.01, this.audioContext!.currentTime + 0.2);
-        oscillator3.start(this.audioContext!.currentTime);
-        oscillator3.stop(this.audioContext!.currentTime + 0.2);
-      }, 600);
+      const playBeep = () => {
+        const osc = this.audioContext!.createOscillator();
+        const gain = this.audioContext!.createGain();
+        osc.connect(gain);
+        gain.connect(this.audioContext!.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.audioContext!.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, this.audioContext!.currentTime + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(800, this.audioContext!.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, this.audioContext!.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext!.currentTime + 0.2);
+        osc.start(this.audioContext!.currentTime);
+        osc.stop(this.audioContext!.currentTime + 0.2);
+      };
+      playBeep();
+      setTimeout(() => playBeep(), 300);
+      setTimeout(() => playBeep(), 600);
     } catch (error) {
       console.error('Error al reproducir sonido de emergencia:', error);
     }
@@ -159,22 +125,12 @@ export class GuardDashboardComponent implements OnInit, OnDestroy {
   formatTime(dateString: string): string {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
+    const diffMins = Math.floor((new Date().getTime() - date.getTime()) / 60000);
     if (diffMins < 1) return 'Hace menos de 1 minuto';
     if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-    
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-    
-    return date.toLocaleString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
   ngOnDestroy(): void {

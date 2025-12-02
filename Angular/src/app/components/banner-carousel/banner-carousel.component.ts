@@ -182,23 +182,11 @@ import { BannerService, Banner } from '../../services/banner.service';
 })
 export class BannerCarouselComponent implements OnInit, OnDestroy {
   banners: Banner[] = [];
-  currentIndex: number = 0;
+  currentIndex = 0;
   private autoSlideInterval: any;
-
-  // Array de colores diferentes para los banners
-  private bannerColors: string[] = [
-    '#ff9800', // Naranja
-    '#2196f3', // Azul
-    '#4caf50', // Verde
-    '#9c27b0', // Morado
-    '#f44336', // Rojo
-    '#00bcd4', // Cyan
-    '#ffc107', // Amarillo
-    '#e91e63', // Rosa
-    '#3f51b5', // Índigo
-    '#ff5722', // Naranja oscuro
-    '#009688', // Teal
-    '#673ab7'  // Púrpura oscuro
+  private readonly bannerColors: string[] = [
+    '#ff9800', '#2196f3', '#4caf50', '#9c27b0', '#f44336', '#00bcd4',
+    '#ffc107', '#e91e63', '#3f51b5', '#ff5722', '#009688', '#673ab7'
   ];
 
   constructor(private bannerService: BannerService) {}
@@ -215,29 +203,18 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
 
   loadBanners(): void {
     this.bannerService.getActiveBanners().subscribe({
-      next: (response) => {
-        if (response.exito || response.success) {
-          this.banners = response.data || response.banners || [];
-          // Ordenar por el campo 'order' si existe
-          this.banners.sort((a, b) => (a.order || 0) - (b.order || 0));
-          if (this.banners.length > 1) {
-            this.startAutoSlide();
-          }
+      next: (res) => {
+        if (res.exito || res.success) {
+          this.banners = (res.data || res.banners || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          if (this.banners.length > 1) this.startAutoSlide();
         }
       },
-      error: (error) => {
-        console.error('Error al cargar banners:', error);
-        // Si hay error, no mostrar banners
-        this.banners = [];
-      }
+      error: () => this.banners = []
     });
   }
 
   startAutoSlide(): void {
-    // Cambiar de banner cada 5 segundos
-    this.autoSlideInterval = setInterval(() => {
-      this.nextSlide();
-    }, 5000);
+    this.autoSlideInterval = setInterval(() => this.nextSlide(), 5000);
   }
 
   nextSlide(): void {
@@ -245,35 +222,19 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
     this.resetAutoSlide();
   }
 
-
   resetAutoSlide(): void {
-    if (this.autoSlideInterval) {
-      clearInterval(this.autoSlideInterval);
-    }
-    if (this.banners.length > 1) {
-      this.startAutoSlide();
-    }
+    if (this.autoSlideInterval) clearInterval(this.autoSlideInterval);
+    if (this.banners.length > 1) this.startAutoSlide();
   }
 
   handleBannerClick(banner: Banner): void {
-    // Los recados no necesitan acción al hacer clic, solo mostrar información
-    // Si en el futuro se necesita abrir una URL, se puede agregar aquí
-    if (banner.cta_url) {
-      window.open(banner.cta_url, '_blank');
-    }
+    if (banner.cta_url) window.open(banner.cta_url, '_blank');
   }
 
-  /**
-   * Obtiene el color para un banner basado en su índice
-   * Usa módulo para repetir colores si hay más banners que colores disponibles
-   */
   getBannerColor(index: number): string {
     return this.bannerColors[index % this.bannerColors.length];
   }
 
-  /**
-   * Obtiene el color del indicador activo
-   */
   getActiveIndicatorColor(): string {
     return this.getBannerColor(this.currentIndex);
   }

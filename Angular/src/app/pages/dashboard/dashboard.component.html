@@ -1,0 +1,24 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <h1>AICP Dashboard</h1>
+    <div class="user-info">
+      <span>{{ profile?.name || user?.email }}</span>
+      <button class="btn btn-secondary" (click)="logout()">Cerrar Sesión</button>
+    </div>
+  </header>
+  
+  <main class="dashboard-content">
+    <div class="welcome-card">
+      <h2>Bienvenido, {{ profile?.name || 'Usuario' }}</h2>
+      <p>Rol: {{ profile?.role || 'N/A' }}</p>
+    </div>
+    
+    <div class="actions-grid">
+      <div class="action-card" (click)="navigateTo('home')">
+        <h3>Inicio</h3>
+        <p>Ir a la página principal</p>
+      </div>
+      <!-- Más acciones aquí -->
+    </div>
+  </main>
+</div>

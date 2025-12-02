@@ -17,22 +17,11 @@ export class PreRegisterComponent {
   ) {}
 
   selectRegistrationType(type: string): void {
-    // Redirigir a la ruta de agregar visitante con el tipo seleccionado
-    this.router.navigate(['/visitors/add'], { 
-      queryParams: { type: type } 
-    });
+    this.router.navigate(['/visitors/add'], { queryParams: { type } });
   }
 
   goBack(): void {
-    // Verificar si el usuario es admin o residente
-    const profile = this.authService.getCachedProfile();
-    const isAdmin = profile?.role === 'admin';
-    
-    // Si es admin, regresar al dashboard; si es residente, regresar al home
-    if (isAdmin) {
-      this.router.navigate(['/dashboard']);
-    } else {
-      this.router.navigate(['/home']);
-    }
+    const isAdmin = this.authService.getCachedProfile()?.role === 'admin';
+    this.router.navigate([isAdmin ? '/dashboard' : '/home']);
   }
 }

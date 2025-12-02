@@ -137,18 +137,15 @@ export class GuardQrScannerComponent implements OnInit, OnDestroy {
   processQRData(qrDataString: string): void {
     this.error = '';
     this.loading = true;
-    
     try {
       let qrData: any;
       try {
         qrData = JSON.parse(qrDataString);
       } catch {
-        // Intentar extraer de URL
         if (qrDataString.includes('data=')) {
           const urlMatch = qrDataString.match(/[?&]data=([^&]*)/);
           if (urlMatch && urlMatch[1]) {
-            qrDataString = decodeURIComponent(urlMatch[1]);
-            qrData = JSON.parse(qrDataString);
+            qrData = JSON.parse(decodeURIComponent(urlMatch[1]));
           } else {
             throw new Error('Formato inválido');
           }
@@ -156,36 +153,25 @@ export class GuardQrScannerComponent implements OnInit, OnDestroy {
           throw new Error('Formato inválido');
         }
       }
-      
       let qrType = qrData.t || qrData.type;
       let qrId = qrData.id || qrData.visitor_id || qrData.event_id;
-      
       if (!qrType || !qrId) {
         this.loading = false;
-        this.scanResult = {
-          type: 'invalid',
-          message: 'Código QR inválido: falta información'
-        };
+        this.scanResult = { type: 'invalid', message: 'Código QR inválido: falta información' };
         return;
       }
-      
       if (qrType === 'visitor' || qrType === 'one-time' || qrType === 'event') {
         this.processVisitorOrEventQR(qrId, qrType, qrDataString);
       } else if (qrType === 'resident') {
         this.loading = false;
         this.scanResult = {
-          type: 'resident',
-          name: qrData.name || qrData.user_name || '',
-          user_name: qrData.user_name || qrData.name || '',
-          user_id: qrId || qrData.user_id || '',
+          type: 'resident', name: qrData.name || qrData.user_name || '',
+          user_name: qrData.user_name || qrData.name || '', user_id: qrId || qrData.user_id || '',
           house_number: qrData.house_number || ''
         };
       } else {
         this.loading = false;
-        this.scanResult = {
-          type: 'invalid',
-          message: 'Código QR no reconocido'
-        };
+        this.scanResult = { type: 'invalid', message: 'Código QR no reconocido' };
       }
     } catch (error) {
       this.loading = false;
@@ -196,106 +182,65 @@ export class GuardQrScannerComponent implements OnInit, OnDestroy {
 
   processVisitorOrEventQR(id: string, type: string, qrDataString: string): void {
     this.visitorService.decodeVisitorQR(qrDataString).subscribe({
-      next: (response) => {
+      next: (res) => {
         this.loading = false;
-        if (response.exito && response.visitor_info) {
-          const info = response.visitor_info;
+        if (res.exito && res.visitor_info) {
+          const info = res.visitor_info;
           if (info.visitor_type === 'event') {
             this.scanResult = {
-              type: 'event',
-              event_name: info.event_name || '',
-              visitor_id: info.visitor_id || id,
-              resident_name: info.resident_name || '',
-              resident_address: info.resident_address || '',
-              status: 'active'
+              type: 'event', event_name: info.event_name || '', visitor_id: info.visitor_id || id,
+              resident_name: info.resident_name || '', resident_address: info.resident_address || '', status: 'active'
             };
           } else {
             this.scanResult = {
-              type: info.visitor_type || 'visitor',
-              visitor_name: info.visitor_name || '',
-              visitor_id: info.visitor_id || id,
-              resident_name: info.resident_name || '',
-              resident_address: info.resident_address || '',
-              status: 'active'
+              type: info.visitor_type || 'visitor', visitor_name: info.visitor_name || '',
+              visitor_id: info.visitor_id || id, resident_name: info.resident_name || '',
+              resident_address: info.resident_address || '', status: 'active'
             };
           }
         } else {
           this.getVisitorInfoDirectly(id, type);
         }
       },
-      error: (err) => {
-        this.getVisitorInfoDirectly(id, type);
-      }
+      error: () => this.getVisitorInfoDirectly(id, type)
     });
   }
 
   getVisitorInfoDirectly(visitorId: string, type: string): void {
     this.visitorService.getVisitor(visitorId).subscribe({
-      next: (response) => {
+      next: (res) => {
         this.loading = false;
-        const visitor = response.visitor || (response.exito ? response.visitor : null);
+        const visitor = res.visitor || (res.exito && res.visitor);
         if (visitor) {
           if (type === 'event') {
-            this.scanResult = {
-              type: 'event',
-              event_name: visitor.name || '',
-              visitor_id: visitor.id || visitorId,
-              status: visitor.status || 'active'
-            };
+            this.scanResult = { type: 'event', event_name: visitor.name || '', visitor_id: visitor.id || visitorId, status: visitor.status || 'active' };
           } else {
-            this.scanResult = {
-              type: visitor.type || 'visitor',
-              visitor_name: visitor.name || '',
-              visitor_id: visitor.id || visitorId,
-              status: visitor.status || 'active'
-            };
+            this.scanResult = { type: visitor.type || 'visitor', visitor_name: visitor.name || '', visitor_id: visitor.id || visitorId, status: visitor.status || 'active' };
           }
         } else {
-          this.scanResult = {
-            type: 'invalid',
-            message: 'Visitante no encontrado'
-          };
+          this.scanResult = { type: 'invalid', message: 'Visitante no encontrado' };
         }
       },
-      error: (err) => {
+      error: () => {
         this.loading = false;
-        this.scanResult = {
-          type: 'invalid',
-          message: 'Error al obtener información'
-        };
+        this.scanResult = { type: 'invalid', message: 'Error al obtener información' };
       }
     });
   }
 
   approveAccess(): void {
-    if (!this.scanResult || !this.scanResult.visitor_id) return;
-    
-    const nextStatus = this.scanResult.status === 'active' || this.scanResult.status === 'salio' ? 'dentro' : 'dentro';
-    
-    this.visitorService.updateVisitor(this.scanResult.visitor_id, { status: nextStatus }).subscribe({
-      next: (response) => {
-        this.scanResult.status = nextStatus;
-        alert('Acceso aprobado correctamente');
-      },
-      error: (err) => {
-        alert('Error al aprobar acceso');
-        console.error('Error:', err);
-      }
+    if (!this.scanResult?.visitor_id) return;
+    this.visitorService.updateVisitor(this.scanResult.visitor_id, { status: 'dentro' }).subscribe({
+      next: () => { this.scanResult.status = 'dentro'; alert('Acceso aprobado correctamente'); },
+      error: () => alert('Error al aprobar acceso')
     });
   }
 
   registerExit(): void {
-    if (!this.scanResult || !this.scanResult.visitor_id) return;
-    
+    if (!this.scanResult?.visitor_id) return;
     this.visitorService.updateVisitor(this.scanResult.visitor_id, { status: 'salio' }).subscribe({
-      next: (response) => {
-        this.scanResult.status = 'salio';
-        alert('Salida registrada correctamente');
-      },
-      error: (err) => {
-        alert('Error al registrar salida');
-        console.error('Error:', err);
-      }
+      next: () => { this.scanResult.status = 'salio'; alert('Salida registrada correctamente'); },
+      error: () => alert('Error al registrar salida')
     });
   }
 

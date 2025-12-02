@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { VisitorService } from '../../services/visitor.service';
 import { AuthService } from '../../services/auth.service';
+import { QRCanvasService } from '../../services/qr-canvas.service';
 
 @Component({
   selector: 'app-list',
@@ -23,7 +24,8 @@ export class ListComponent implements OnInit {
   constructor(
     private visitorService: VisitorService,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private qrCanvasService: QRCanvasService
   ) {}
 
   ngOnInit(): void {
@@ -139,10 +141,7 @@ export class ListComponent implements OnInit {
 
   shareQR(): void {
     if (!this.selectedVisitorQR || !this.selectedVisitor) return;
-
-    // Intentar usar la Web Share API si está disponible
     if (navigator.share) {
-      // Convertir la URL del QR a blob para compartir
       fetch(this.selectedVisitorQR)
         .then(response => response.blob())
         .then(blob => {
@@ -151,113 +150,53 @@ export class ListComponent implements OnInit {
             title: `Código QR - ${this.selectedVisitor?.name || 'Visitante'}`,
             text: `Código QR para el acceso del visitante ${this.selectedVisitor?.name || ''}`,
             files: [file]
-          }).catch(err => {
-            console.log('Error al compartir:', err);
-            // Si falla, intentar descargar
-            this.downloadQR();
-          });
+          }).catch(() => this.downloadQR());
         })
-        .catch(err => {
-          console.error('Error al obtener la imagen:', err);
-          // Si falla, intentar compartir la URL
-          this.shareQRUrl();
-        });
+        .catch(() => this.shareQRUrl());
     } else {
-      // Si no hay soporte para compartir, copiar URL al portapapeles o descargar
       this.shareQRUrl();
     }
   }
 
   shareQRUrl(): void {
     if (!this.selectedVisitorQR) return;
-
-    // Copiar la URL al portapapeles
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(this.selectedVisitorQR).then(() => {
-        alert('URL del código QR copiada al portapapeles');
-      }).catch(err => {
-        console.error('Error al copiar:', err);
-        this.downloadQR();
-      });
+      navigator.clipboard.writeText(this.selectedVisitorQR).then(() => alert('URL del código QR copiada al portapapeles')).catch(() => this.downloadQR());
     } else {
-      // Fallback: descargar
       this.downloadQR();
     }
   }
 
   downloadQR(): void {
     if (!this.selectedVisitorQR || !this.selectedVisitor) return;
-
-    // Crear una imagen para cargar el QR
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    
-    img.onload = () => {
-      // Crear un canvas para combinar el QR y el texto
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return;
-      
-      // Configurar dimensiones del canvas
-      const qrSize = 400; // Tamaño del QR
-      const padding = 40;
-      const textHeight = 120;
-      const canvasWidth = qrSize + (padding * 2);
-      const canvasHeight = qrSize + textHeight + (padding * 3);
-      
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-      
-      // Fondo blanco
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-      
-      // Dibujar el QR code
-      ctx.drawImage(img, padding, padding, qrSize, qrSize);
-      
-      // Configurar el texto
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      
-      // Título "Acceso"
-      ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.fillText('Acceso', canvasWidth / 2, qrSize + padding + 20);
-      
-      // Texto principal
-      ctx.font = '16px Arial, sans-serif';
-      const line1 = 'Escanea este código para ingresar de forma segura.';
-      const line2 = 'Uso exclusivo de personal autorizado.';
-      
-      ctx.fillText(line1, canvasWidth / 2, qrSize + padding + 50);
-      ctx.fillText(line2, canvasWidth / 2, qrSize + padding + 75);
-      
-      // Convertir canvas a imagen y descargar
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `QR-${this.selectedVisitor?.name || 'visitante'}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }
-      }, 'image/png');
-    };
-    
-    img.onerror = () => {
-      // Si falla, descargar directamente sin texto
+    const fileName = `QR-${this.selectedVisitor?.name || 'visitante'}.png`;
+    const downloadFile = (url: string) => {
       const link = document.createElement('a');
-      link.href = this.selectedVisitorQR;
-      link.download = `QR-${this.selectedVisitor?.name || 'visitante'}.png`;
+      link.href = url;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     };
-    
+    img.onload = () => {
+      try {
+        const canvas = this.qrCanvasService.createCanvasWithQR(img);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            downloadFile(url);
+            URL.revokeObjectURL(url);
+          } else {
+            downloadFile(this.selectedVisitorQR);
+          }
+        }, 'image/png');
+      } catch {
+        downloadFile(this.selectedVisitorQR);
+      }
+    };
+    img.onerror = () => downloadFile(this.selectedVisitorQR);
     img.src = this.selectedVisitorQR;
   }
 }

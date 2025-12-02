@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
 import { BannerService, Banner } from '../services/banner.service';
-import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,52 +15,42 @@ export class DashboardComponent implements OnInit {
   user: any = null;
   profile: any = null;
   banners: Banner[] = [];
-  loadingBanners: boolean = false;
+  loadingBanners = false;
 
   constructor(
     private authService: AuthService,
     private router: Router,
-    private bannerService: BannerService,
-    private http: HttpClient
+    private bannerService: BannerService
   ) {}
 
   ngOnInit(): void {
     this.user = this.authService.getCurrentUser();
     this.profile = this.authService.getCachedProfile();
-    
     if (!this.user) {
       this.router.navigate(['/auth/sing-in']);
       return;
     }
-    
-    if (this.profile?.role === 'guard') {
+    const role = this.profile?.role;
+    if (role === 'guard') {
       this.router.navigate(['/guard-dashboard']);
       return;
     }
-    
-    if (this.profile?.role === 'resident') {
+    if (role === 'resident') {
       this.router.navigate(['/home']);
       return;
     }
-
-    if (this.profile?.role === 'admin') {
-      this.loadBanners();
-    }
+    if (role === 'admin') this.loadBanners();
   }
 
   loadBanners(): void {
     this.loadingBanners = true;
     this.bannerService.getAllBanners().subscribe({
-      next: (response) => {
-        if (response.success || response.exito) {
-          this.banners = response.data || response.banners || [];
-        } else {
-          this.banners = [];
-        }
+      next: (res) => {
+        this.banners = (res.success || res.exito) ? (res.data || res.banners || []) : [];
         this.loadingBanners = false;
       },
-      error: (error) => {
-        console.error('Error al cargar banners:', error);
+      error: (err) => {
+        console.error('Error al cargar banners:', err);
         this.banners = [];
         this.loadingBanners = false;
       }
@@ -70,26 +58,18 @@ export class DashboardComponent implements OnInit {
   }
 
   editBanner(banner: Banner): void {
-    this.router.navigate(['/admin-banner'], { 
-      state: { bannerToEdit: banner } 
-    });
+    this.router.navigate(['/admin-banner'], { state: { bannerToEdit: banner } });
   }
 
   deleteBanner(bannerId: number, bannerTitle: string): void {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el recado "${bannerTitle}"?`)) {
-      return;
-    }
-
+    if (!confirm(`¿Estás seguro de que deseas eliminar el recado "${bannerTitle}"?`)) return;
     this.bannerService.deleteBanner(bannerId).subscribe({
-      next: (response) => {
-        if (response.success || response.exito) {
-          this.loadBanners();
-        } else {
-          alert('Error al eliminar el recado');
-        }
+      next: (res) => {
+        if (res.success || res.exito) this.loadBanners();
+        else alert('Error al eliminar el recado');
       },
-      error: (error) => {
-        console.error('Error al eliminar banner:', error);
+      error: (err) => {
+        console.error('Error al eliminar banner:', err);
         alert('Error al eliminar el recado');
       }
     });

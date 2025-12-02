@@ -3,22 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class VisitorService {
   private apiUrl = `${environment.apiUrl}/visitors`;
 
   constructor(private http: HttpClient) {}
 
-  getVisitors(params?: {
-    user_id?: string;
-    status?: string;
-    type?: string;
-    search?: string;
-  }): Observable<any> {
+  getVisitors(params?: { user_id?: string; status?: string; type?: string; search?: string }): Observable<any> {
     let httpParams = new HttpParams();
-    
     if (params) {
       Object.keys(params).forEach(key => {
         if (params[key as keyof typeof params]) {
@@ -26,7 +18,6 @@ export class VisitorService {
         }
       });
     }
-
     return this.http.get<any>(this.apiUrl, { params: httpParams });
   }
 
@@ -63,7 +54,6 @@ export class VisitorService {
   }
 
   getResidentAddress(email: string): Observable<any> {
-    const authUrl = `${environment.apiUrl}/auth/resident-address`;
-    return this.http.get<any>(authUrl, { params: { email } });
+    return this.http.get<any>(`${environment.apiUrl}/auth/resident-address`, { params: { email } });
   }
 }

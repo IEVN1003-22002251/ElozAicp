@@ -37,7 +37,7 @@
     <h2 class="profile-name">{{ profile?.name || profile?.user_name || 'Usuario' }}</h2>
     <div class="profile-details">
       <p class="profile-location-role">
-        <span class="location">{{ profile?.fraccionamiento_name || 'Villas 123' }}</span>
+        <span class="location">{{ getResidentAddress() }}</span>
         <span class="separator">•</span>
         <span class="role">resident</span>
       </p>
